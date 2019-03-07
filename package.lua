@@ -12,6 +12,7 @@ return {
   dependencies = {
     "luvit/require",
     "luvit/pretty-print",
+    "creationix/coro-net",
   },
   files = {
     "**.lua",
