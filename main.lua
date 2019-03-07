@@ -1,38 +1,46 @@
 -- luacheck: globals p
 
-local connect = require("coro-net").connect
-local varint = require "varint-codec"
+local connect = require "socket"
+local wrap = require "socket-channel"
+local varint = require "varint"
 
-
-print "Hello Filecoin"
-coroutine.wrap(
-    function()
-        print "Connecting..."
-        local read, write, socket =
-            assert(
-            connect {
-                host = "127.0.0.1",
-                port = 4001,
-                encode = varint.encode,
-                decode = varint.decode
-            }
-        )
-        print "Connected!"
-        p(socket:getpeername())
-
-        -- Negotiate protocol
-        -- For now, require plaintext
-        -- Start test server with `ipfs daemon --disable-transport-encryption`
-        assert(read() == "/multistream/1.0.0", "Expected multistream/1.0.0 server")
-        write "/multistream/1.0.0"
-        write "/plaintext/1.0.0"
-        assert(read() == "/plaintext/1.0.0", "Expected negoiation for plaintext/1.0.0")
-        -- Expect another multistream line?
-        -- TODO: understand why this is sent.
-        assert(read() == "/multistream/1.0.0", "Expected multistream/1.0.0 server")
-
-        print("READY")
+local function readFrame(socket)
+    local length, err = varint.read(socket.next)
+    if not length then
+        return nil, err
     end
-)()
+    return socket.read(length)
+end
+
+local function writeFrame(socket, message)
+    return socket.write(varint.write(#message) .. message)
+end
+
+-- local mplex = require "mplex-codec"
+
+local function main()
+    print "Connecting..."
+    local socket = wrap(assert(connect {host = "127.0.0.1", port = 4001}))
+    print "Connected!"
+    p(socket.socket:getpeername())
+
+    -- Negotiate protocol
+    -- For now, require plaintext
+    -- Start test server with `ipfs daemon --disable-transport-encryption`
+    local first = readFrame(socket)
+    p(first)
+    assert(first == "/multistream/1.0.0\n", "Expected multistream/1.0.0 server")
+    writeFrame(socket, "/multistream/1.0.0\n")
+    writeFrame(socket, "/plaintext/1.0.0\n")
+    assert(readFrame(socket) == "/plaintext/1.0.0\n", "Expected negotiation for plaintext/1.0.0")
+    -- Expect another multistream line?
+    -- TODO: understand why this is sent.
+    assert(readFrame(socket) == "/multistream/1.0.0\n")
+
+
+    print("READY")
+end
+
+coroutine.wrap(main)()
 
 require("uv").run()
