@@ -1,7 +1,7 @@
 local deframe = require 'varint-deframe'
 local Utils = require './utils'
-local iterList = Utils.iterList
 local listIter = Utils.listIter
+local iterList = Utils.iterList
 local listEqual = Utils.listEqual
 
 local function test(inputs, outputs)
