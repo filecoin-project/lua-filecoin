@@ -1,15 +1,13 @@
+local defer = require 'defer'
 local math = require 'math'
 local random = math.random
 local makeReader = require 'stream-reader'
 local Utils = require './utils'
-local listIter = Utils.listIter
-local iterList = Utils.iterList
 local mockStream = Utils.mockStream
-local setImmediate = Utils.setImmediate
 
 local function pause()
   local thread = coroutine.running()
-  setImmediate(
+  defer(
     function()
       assert(coroutine.resume(thread))
     end
