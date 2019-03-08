@@ -1,5 +1,21 @@
+local bit = require 'bit'
+local lshift = bit.lshift
+local rshift = bit.rshift
+local bxor = bit.bxor
 local defer = require 'defer'
+
 local Utils = {}
+
+-- A simple and fast deterministic random sequence generator.
+function Utils.deadbeef(seed)
+  local beef = 0xdeadbeef
+
+  return function()
+    seed = bxor(lshift(seed, 7), rshift(seed, 25) + beef)
+    beef = bxor(lshift(beef, 7), rshift(beef, 25) + 0xdeadbeef)
+    return seed
+  end
+end
 
 function Utils.mockStream()
   local queue = {}

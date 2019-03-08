@@ -1,9 +1,8 @@
 local defer = require 'defer'
-local math = require 'math'
-local random = math.random
 local makeReader = require 'stream-reader'
 local Utils = require './utils'
 local mockStream = Utils.mockStream
+local deadbeef = Utils.deadbeef
 
 local function pause()
   local thread = coroutine.running()
@@ -18,16 +17,17 @@ end
 local function test(index)
   local stream = mockStream()
   local read = makeReader(stream)
+  local random = deadbeef(index * 13)
 
   coroutine.wrap(
     function()
       for i = 1, 100 do
-        if random(2) == 1 then
+        if random() % 2 == 1 then
           pause()
         end
         stream.push('item-' .. i)
       end
-      if random(2) == 1 then
+      if random() % 2 == 1 then
         pause()
       end
       stream.push(nil)
@@ -38,7 +38,7 @@ local function test(index)
     function()
       local i = 0
       for item in read do
-        if random(2) == 1 then
+        if random() % 2 == 1 then
           pause()
         end
         i = i + 1
