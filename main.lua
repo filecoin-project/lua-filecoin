@@ -28,9 +28,12 @@ local function main()
   -- TODO: understand why this is sent.
   assert(readFrame() == '/multistream/1.0.0\n')
 
+  print('READY')
   -- mplex.write(socket, "NewStream", 42, "Hello")
 
-  print('READY')
+  print("Closing socket...")
+  socket:close()
+
 end
 
 coroutine.wrap(main)()
