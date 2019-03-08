@@ -3,8 +3,9 @@
 local connect = require "socket"
 local makeReader = require "stream-reader"
 local makeWriter = require "stream-writer"
-local deframe = require "varint-deframe"
-local frame = require "varint-frame"
+local Varint = require 'varint'
+local deframe = Varint.deframe
+local frame = Varint.frame
 
 local function main()
     print "Connecting..."
