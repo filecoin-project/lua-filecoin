@@ -50,6 +50,6 @@ local function test(index)
   )()
 end
 
-for i = 1, 100 do
+for i = 1, 1000 do
   test(i)
 end

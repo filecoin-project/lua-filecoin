@@ -1,42 +1,32 @@
 -- luacheck: globals p
 
 local connect = require "socket"
-local wrap = require "socket-channel"
-local varint = require "varint"
-
-local function readFrame(socket)
-    local length, err = varint.read(socket.next)
-    if not length then
-        return nil, err
-    end
-    return socket.read(length)
-end
-
-local function writeFrame(socket, message)
-    return socket.write(varint.write(#message) .. message)
-end
-
--- local mplex = require "mplex-codec"
+local makeReader = require "stream-reader"
+local makeWriter = require "stream-writer"
+local deframe = require "varint-deframe"
+local frame = require "varint-frame"
 
 local function main()
     print "Connecting..."
-    local socket = wrap(assert(connect {host = "127.0.0.1", port = 4001}))
+    local socket = assert(connect {host = "127.0.0.1", port = 4001})
     print "Connected!"
-    p(socket.socket:getpeername())
+    p(socket:getpeername())
+
+    local readFrame = deframe(makeReader(socket))
+    local writeFrame = frame(makeWriter(socket))
 
     -- Negotiate protocol
     -- For now, require plaintext
     -- Start test server with `ipfs daemon --disable-transport-encryption`
-    local first = readFrame(socket)
-    p(first)
-    assert(first == "/multistream/1.0.0\n", "Expected multistream/1.0.0 server")
-    writeFrame(socket, "/multistream/1.0.0\n")
-    writeFrame(socket, "/plaintext/1.0.0\n")
-    assert(readFrame(socket) == "/plaintext/1.0.0\n", "Expected negotiation for plaintext/1.0.0")
+    assert(readFrame() == "/multistream/1.0.0\n", "Expected multistream/1.0.0 server")
+    writeFrame("/multistream/1.0.0\n")
+    writeFrame("/plaintext/1.0.0\n")
+    assert(readFrame() == "/plaintext/1.0.0\n", "Expected negotiation for plaintext/1.0.0")
     -- Expect another multistream line?
     -- TODO: understand why this is sent.
-    assert(readFrame(socket) == "/multistream/1.0.0\n")
+    assert(readFrame() == "/multistream/1.0.0\n")
 
+    -- mplex.write(socket, "NewStream", 42, "Hello")
 
     print("READY")
 end
