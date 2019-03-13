@@ -1,41 +1,32 @@
--- luacheck: globals p
+-- luacheck: globals 
+local uv = require 'uv'
 
-local connect = require 'socket'
-local makeReader = require 'stream-reader'
-local makeWriter = require 'stream-writer'
-local Varint = require 'varint'
-local deframe = Varint.deframe
-local frame = Varint.frame
+local Switch = require 'switch'
+local Multiselect = require 'multiselect'
+
+local ffi = require 'ffi'
+local newBuffer = ffi.typeof('uint8_t[?]')
 
 local function main()
-  print 'Connecting...'
-  local socket = assert(connect {host = '127.0.0.1', port = 4001})
+  local mp = Switch.dial('127.0.0.1', 4001)
   print 'Connected!'
-  p(socket:getpeername())
+  p(mp.socket:getpeername())
 
-  -- Derive read/write functions that work with framed messages
-  local readFrame = deframe(makeReader(socket))
-  local writeFrame = frame(makeWriter(socket))
+  local stream = mp.newStream()
+  Multiselect.negotiate(stream, '/ipfs/ping/1.0.0')
+  print 'Negotiated mplex ping..'
 
-  -- Negotiate protocol
-  -- For now, require plaintext
-  -- Start test server with `ipfs daemon --disable-transport-encryption`
-  assert(readFrame() == '/multistream/1.0.0\n', 'Expected multistream/1.0.0 server')
-  writeFrame('/multistream/1.0.0\n')
-  writeFrame('/plaintext/1.0.0\n')
-  assert(readFrame() == '/plaintext/1.0.0\n', 'Expected negotiation for plaintext/1.0.0')
-  -- Expect another multistream line?
-  -- TODO: understand why this is sent.
-  assert(readFrame() == '/multistream/1.0.0\n')
+  local ping = string.rep('*', 32)
+  local before = uv.hrtime()
+  stream.writeChunk(ping)
+  assert(stream.readChunk(32) == ping)
+  local after = uv.hrtime()
+  print("Ping verified!", after - before .. ' μs')
 
-  print('READY')
-  -- mplex.write(socket, "NewStream", 42, "Hello")
-
-  print("Closing socket...")
-  socket:close()
-
+  print('Closing socket...')
+  mp.socket:close()
 end
 
 coroutine.wrap(main)()
 
-require('uv').run()
+uv.run()
