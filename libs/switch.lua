@@ -2,6 +2,7 @@ local connect = require 'socket'
 local wrapStream = require 'stream-wrap'
 local Mplex = require 'mplex'
 local Multiselect = require 'multiselect'
+local Secio = require 'secio'
 
 local Switch = {}
 
@@ -10,9 +11,11 @@ function Switch.dial(host, port)
   local stream = wrapStream(assert(connect {host = host, port = port}))
 
   -- Negotiate protocol
-  -- For now, require plaintext
-  -- Start test server with `ipfs daemon --disable-transport-encryption`
-  Multiselect.negotiate(stream, '/plaintext/1.0.0')
+  -- Start test server with `ipfs daemon`
+  Multiselect.negotiate(stream, '/secio/1.0.0')
+
+  stream = Secio.wrap(stream)
+  error('exit')
 
   -- Upgrade to mplex protocol and return handle to mp object.
   return Mplex.start(stream)

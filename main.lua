@@ -1,11 +1,9 @@
--- luacheck: globals 
+-- luacheck: globals p
+
 local uv = require 'uv'
 
 local Switch = require 'switch'
 local Multiselect = require 'multiselect'
-
-local ffi = require 'ffi'
-local newBuffer = ffi.typeof('uint8_t[?]')
 
 local function main()
   local mp = Switch.dial('127.0.0.1', 4001)
@@ -21,7 +19,7 @@ local function main()
   stream.writeChunk(ping)
   assert(stream.readChunk(32) == ping)
   local after = uv.hrtime()
-  print("Ping verified!", after - before .. ' μs')
+  print('Ping verified!', after - before .. ' μs')
 
   print('Closing socket...')
   mp.socket:close()
