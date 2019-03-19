@@ -43,6 +43,8 @@ ffi.cdef [[
   int OBJ_sn2nid(const char *s);
 ]]
 
+local EcKey = ffi.typeof 'EC_KEY'
+
 local NistToASN1 = {
   ['P-256'] = 'prime256v1', -- X9.62/SECG curve over a 256 bit prime field
   ['P-384'] = 'secp384r1', -- NIST/SECG curve over a 384 bit prime field
@@ -70,8 +72,15 @@ function Exchange.generate(curveName)
   return key
 end
 
+local function check(key)
+  assert(
+    ffi.istype(EcKey, key) and ffi.C.EC_KEY_check_key(key) == 1,
+    'Expected valid EC_KEY'
+  )
+end
+
 function Exchange.export(key)
-  assert(ffi.C.EC_KEY_check_key(key) == 1)
+  check(key)
   local group = ffi.C.EC_KEY_get0_group(key)
   local point = ffi.C.EC_KEY_get0_public_key(key)
   -- TODO: find if we can derive this size value from the group.
@@ -99,13 +108,13 @@ function Exchange.import(curveName, str)
 end
 
 function Exchange.free(key)
-  assert(ffi.C.EC_KEY_check_key(key) == 1)
+  check(key)
   ffi.C.EC_KEY_free(key)
 end
 
 function Exchange.exchange(key, peerkey)
-  assert(ffi.C.EC_KEY_check_key(key) == 1)
-  assert(ffi.C.EC_KEY_check_key(peerkey) == 1)
+  check(key)
+  check(peerkey)
   local group = ffi.C.EC_KEY_get0_group(key)
   local fieldSize = ffi.C.EC_GROUP_get_degree(group)
   local secretLen = math.floor((fieldSize + 7) / 8)

@@ -1,6 +1,6 @@
 local byte = string.byte
 local ffi = require 'ffi'
-local newBuffer = ffi.typeof('uint8_t[?]')
+local newBuffer = require 'buffer'
 
 local Connection = {}
 
