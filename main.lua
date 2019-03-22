@@ -1,12 +1,12 @@
 -- luacheck: globals p
 
-local uv = require 'uv'
+local loop = require 'uv-ffi'
 
 local Switch = require 'switch'
 local Multiselect = require 'multiselect'
 
 local function main()
-  local mp = Switch.dial('127.0.0.1', 4001)
+  local mp = Switch.dial('::1', 4001)
   print 'Connected!'
   p(mp.socket:getpeername())
 
@@ -27,4 +27,4 @@ end
 
 coroutine.wrap(main)()
 
-uv.run()
+loop:run "default"

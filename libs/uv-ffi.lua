@@ -74,6 +74,7 @@ ffi.cdef(
     struct uv_connect_s {uint8_t _[%d];};
     struct uv_write_s {uint8_t _[%d];};
     struct uv_shutdown_s {uint8_t _[%d];};
+    struct uv_getaddrinfo_s {uint8_t _[%d];};
     struct uv_tcp_s {uint8_t _[%d];};
     struct uv_timer_s {uint8_t _[%d];};
   ]],
@@ -81,6 +82,7 @@ ffi.cdef(
     tonumber(UV.uv_req_size(UV.UV_CONNECT)),
     tonumber(UV.uv_req_size(UV.UV_WRITE)),
     tonumber(UV.uv_req_size(UV.UV_SHUTDOWN)),
+    tonumber(UV.uv_req_size(UV.UV_GETADDRINFO)),
     tonumber(UV.uv_handle_size(UV.UV_TCP)),
     tonumber(UV.uv_handle_size(UV.UV_TIMER))
   )
@@ -92,6 +94,7 @@ ffi.cdef [[
   typedef struct uv_write_s uv_write_t;
   typedef struct uv_connect_s uv_connect_t;
   typedef struct uv_shutdown_s uv_shutdown_t;
+  typedef struct uv_getaddrinfo_s uv_getaddrinfo_t;
   typedef struct uv_handle_s uv_handle_t;
   typedef struct uv_stream_s uv_stream_t;
   typedef struct uv_tcp_s uv_tcp_t;
@@ -103,19 +106,12 @@ ffi.cdef [[
     UV_RUN_NOWAIT
   } uv_run_mode;
 
-  struct in_addr {
-    unsigned long s_addr;
-  };
-
-  struct sockaddr_in {
-    short            sin_family;
-    unsigned short   sin_port;
-    struct in_addr   sin_addr;
-    char             sin_zero[8];
-  };
-
   int uv_ip4_addr(const char* ip, int port, struct sockaddr_in* addr);
   int uv_ip6_addr(const char* ip, int port, struct sockaddr_in6* addr);
+  int uv_ip4_name(const struct sockaddr_in* src, char* dst, size_t size);
+  int uv_ip6_name(const struct sockaddr_in6* src, char* dst, size_t size);
+  int uv_inet_ntop(int af, const void* src, char* dst, size_t size);
+  int uv_inet_pton(int af, const char* src, void* dst);
 
   const char* uv_err_name(int err);
   const char* uv_strerror(int err);
@@ -128,6 +124,7 @@ local function makeCallback(type)
     cast(
     type,
     function(...)
+      p("oncall", ...)
       cb:free()
       assert(coroutine.resume(thread, ...))
     end
@@ -146,6 +143,8 @@ local function uvCheck(status)
     return status
   end
 end
+
+local Loop = {}
 
 -------------------------------------------------------------------------------
 -- Req
@@ -202,6 +201,112 @@ function Shutdown.new()
 end
 
 -------------------------------------------------------------------------------
+-- Getaddrinfo
+-------------------------------------------------------------------------------
+
+ffi.cdef [[
+  enum {
+    AF_UNSPEC = 0,
+    AF_INET = 2,
+    AF_INET6 = 10
+  };
+  enum {
+    SOCK_STREAM = 1,
+    SOCK_DGRAM = 2
+  };
+
+  typedef int32_t socklen_t;
+
+  struct addrinfo {
+    int              ai_flags;
+    int              ai_family;
+    int              ai_socktype;
+    int              ai_protocol;
+    socklen_t        ai_addrlen;
+    struct sockaddr *ai_addr;
+    char            *ai_canonname;
+    struct addrinfo *ai_next;
+  };
+
+  typedef void (*uv_getaddrinfo_cb)(uv_getaddrinfo_t* req, int status, struct addrinfo* res);
+
+  int uv_getaddrinfo(
+    uv_loop_t* loop, uv_getaddrinfo_t* req, uv_getaddrinfo_cb getaddrinfo_cb,
+    const char* node, const char* service, const struct addrinfo* hints
+  );
+  void uv_freeaddrinfo(struct addrinfo* ai);
+]]
+
+local Getaddrinfo = setmetatable({}, {__index = Req})
+Getaddrinfo.type = ffi.typeof 'uv_getaddrinfo_t'
+ffi.metatype(Getaddrinfo.type, {__index = Getaddrinfo})
+function Getaddrinfo.new()
+  return Getaddrinfo.type()
+end
+
+local families = {
+  inet = UV.AF_INET,
+  inet6 = UV.AF_INET6,
+  [UV.AF_INET] = 'inet',
+  [UV.AF_INET6] = 'inet6'
+}
+
+local socktypes = {
+  stream = UV.SOCK_STREAM,
+  dgram = UV.SOCK_DGRAM,
+  [UV.SOCK_STREAM] = 'stream',
+  [UV.SOCK_DGRAM] = 'dgram'
+}
+
+function Loop:getaddrinfo(node, service, hints)
+  local req = Getaddrinfo.new()
+  p(req)
+  local opts = ffi.new('struct addrinfo')
+  if type(service) == 'number' then
+    service = tostring(service)
+  end
+  if hints then
+    if hints.family then
+      opts.ai_family = assert(families[hints.family], 'Unknown family name')
+    end
+    if hints.socktype then
+      opts.ai_socktype = assert(socktypes[hints.socktype], 'Unknown socktype name')
+    end
+  end
+  p(node, service, hints)
+  uvCheck(UV.uv_getaddrinfo(self, req, makeCallback 'uv_getaddrinfo_cb', node, service, opts))
+  local _, status, res = coroutine.yield()
+  uvCheck(status)
+  local results = {}
+  local i = 1
+  while res ~= nil do
+    local family = families[res.ai_family]
+    local socktype = socktypes[res.ai_socktype]
+    local entry = {
+      family = family,
+      socktype = socktype
+    }
+    results[i] = entry
+    i = i + 1
+    if family == 'inet' then
+      local buf = ffi.new 'char[16]'
+      local addr = cast('const struct sockaddr_in*', res.ai_addr)
+      uvCheck(UV.uv_ip4_name(addr, buf, 16))
+      entry.addr = ffi.string(buf)
+      entry.port = C.ntohs(addr.sin_port)
+    elseif family == 'inet6' then
+      local buf = ffi.new 'char[46]'
+      local addr = cast('const struct sockaddr_in6*', res.ai_addr)
+      uvCheck(UV.uv_ip6_name(addr, buf, 46))
+      entry.addr = ffi.string(buf)
+      entry.port = C.ntohs(addr.sin6_port)
+    end
+    res = res.ai_next
+  end
+  return results
+end
+
+-------------------------------------------------------------------------------
 -- Handle
 -------------------------------------------------------------------------------
 
@@ -209,6 +314,49 @@ ffi.cdef [[
   typedef void (*uv_walk_cb)(uv_handle_t* handle, void* arg);
   typedef void (*uv_close_cb)(uv_handle_t* handle);
   typedef void (*uv_alloc_cb)(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf);
+
+  struct sockaddr {
+    unsigned short    sa_family;
+    char              sa_data[14];
+  };
+
+  struct in_addr {
+    unsigned long s_addr;
+  };
+
+  struct sockaddr_in {
+    short            sin_family;
+    unsigned short   sin_port;
+    struct in_addr   sin_addr;
+    char             sin_zero[8];
+  };
+
+  struct in6_addr {
+    unsigned char   s6_addr[16];
+  };
+
+  struct sockaddr_in6 {
+    uint16_t        sin6_family;
+    uint16_t        sin6_port;
+    uint32_t        sin6_flowinfo;
+    struct in6_addr sin6_addr;
+    uint32_t        sin6_scope_id;
+  };
+
+  typedef uint16_t sa_family_t;
+
+  struct sockaddr_storage {
+    sa_family_t  ss_family;
+    char      __ss_pad1[6];
+    int64_t   __ss_align;
+    char      __ss_pad2[112];
+  };
+
+  uint32_t htonl(uint32_t hostlong);
+  uint16_t htons(uint16_t hostshort);
+  uint32_t ntohl(uint32_t netlong);
+  uint16_t ntohs(uint16_t netshort);
+
   void *malloc(size_t size);
   void free(void *ptr);
 
@@ -258,8 +406,13 @@ end
 
 function Handle:close()
   local handle = cast('uv_handle_t*', self)
-  UV.uv_close(handle, makeCallback 'uv_close_cb')
-  coroutine.yield()
+  local _, main = coroutine.running()
+  if main then
+    UV.uv_close(handle, nil)
+  else
+    UV.uv_close(handle, makeCallback 'uv_close_cb')
+    coroutine.yield()
+  end
   local cached = cast('uv_buf_t*', UV.uv_handle_get_data(handle))
   if cached ~= nil then
     C.free(cached.base)
@@ -325,7 +478,8 @@ ffi.cdef [[
   int uv_read_start(uv_stream_t* stream, uv_alloc_cb alloc_cb, uv_read_cb read_cb);
   int uv_read_stop(uv_stream_t*);
   int uv_write(uv_write_t* req, uv_stream_t* handle, const uv_buf_t bufs[], unsigned int nbufs, uv_write_cb cb);
-  int uv_write2(uv_write_t* req, uv_stream_t* handle, const uv_buf_t bufs[], unsigned int nbufs, uv_stream_t* send_handle, uv_write_cb cb);
+  int uv_write2(uv_write_t* req, uv_stream_t* handle, const uv_buf_t bufs[], unsigned int nbufs, 
+                uv_stream_t* send_handle, uv_write_cb cb);
   int uv_try_write(uv_stream_t* handle, const uv_buf_t bufs[], unsigned int nbufs);
   int uv_is_readable(const uv_stream_t* handle);
   int uv_is_writable(const uv_stream_t* handle);
@@ -352,44 +506,18 @@ function Stream:accept(client)
   uvCheck(UV.uv_accept(cast('uv_stream_t*', self), cast('uv_stream_t*', client)))
 end
 
-function Stream:read()
-  local stream = cast('uv_stream_t*', self)
-  while true do
-    uvCheck(UV.uv_read_start(stream, allocCb, makeCallback 'uv_read_cb'))
-    local _, status, buf = coroutine.yield()
-    p(status, buf)
-    UV.uv_read_stop(stream)
-    if status == UV.UV_EOF then
-      return
-    end
-    if status < 0 then
-      uvCheck(status)
-    end
-    if status > 0 then
-      return ffi.string(buf.base, status)
-    end
-  end
-end
-
 function Stream:readStart(onRead)
-  setmetatable(
-    onRead,
-    {
-      __gc = function()
-        p('READ GCed')
-      end
-    }
-  )
   local function onEvent(_, status, buf)
+    p("onRead", _, status, buf)
     if status == 0 then
       return
     end
-    if status < 0 then
-      return onRead(uvGetError(status))
-    elseif status == UV.UV_EOF then
+    if status == UV.UV_EOF then
       onRead(nil)
+    elseif status < 0 then
+      return onRead(uvGetError(status))
     else
-      onRead(nil, ffi.string(buf.base, buf.len))
+      onRead(nil, ffi.string(buf.base, status))
     end
   end
   local cb = cast('uv_read_cb', onEvent)
@@ -435,11 +563,11 @@ function Stream:isWritable()
 end
 
 function Stream:setBlocking(blocking)
-  uvCheck(UV.uv_set_blocking(cast('uv_stream_t*', blocking)))
+  uvCheck(UV.uv_set_blocking(cast('uv_stream_t*', self), blocking))
 end
 
 function Stream:getWriteQueueSize()
-  return UV.uv_stream_get_write_queue_size(cast('uv_stream_t*', self))
+  return tonumber(UV.uv_stream_get_write_queue_size(cast('uv_stream_t*', self)))
 end
 
 -------------------------------------------------------------------------------
@@ -455,9 +583,9 @@ ffi.cdef [[
 local Tcp = setmetatable({}, {__index = Stream})
 Tcp.type = ffi.typeof 'uv_tcp_t'
 
-function Tcp.new(loop)
+function Loop:newTcp()
   local tcp = Tcp.type()
-  tcp:init(loop)
+  tcp:init(self)
   return tcp
 end
 
@@ -501,9 +629,9 @@ ffi.cdef [[
 local Timer = setmetatable({}, {__index = Handle})
 Timer.Type = ffi.typeof 'uv_timer_t'
 
-function Timer.new(loop)
+function Loop:newTimer()
   local timer = Timer.Type()
-  timer:init(loop)
+  timer:init(self)
   return timer
 end
 
@@ -541,11 +669,12 @@ end
 
 local function onGc(handle)
   if not handle:isClosing() then
-    p('auto closing...', handle._)
-    UV.uv_close(cast('uv_handle_t*', handle), nil)
-    return true
+    -- We can't safely close handles here because onClose happens after the
+    -- struct is freed by lua.
+    -- Instead abort the process so the programmer can fix it early.
+    handle = cast('uv_' .. Handle.getType(handle) .. '_t*', handle)
+    error('Unclosed ' .. tostring(handle) .. ' got garbage collected')
   end
-  return false
 end
 
 ffi.metatype(Timer.Type, {__index = Timer, __gc = onGc})
@@ -555,6 +684,7 @@ ffi.metatype(Timer.Type, {__index = Timer, __gc = onGc})
 -------------------------------------------------------------------------------
 
 ffi.cdef [[
+  uv_loop_t* uv_default_loop();
   int uv_loop_init(uv_loop_t* loop);
   int uv_loop_close(uv_loop_t* loop);
   int uv_loop_alive(const uv_loop_t* loop);
@@ -565,21 +695,12 @@ ffi.cdef [[
   int uv_run(uv_loop_t* loop, uv_run_mode mode);
 ]]
 
-local Loop = {}
 local LoopType = ffi.typeof 'uv_loop_t'
 
 function Loop.new()
   local loop = LoopType()
   loop:init()
   return loop
-end
-
-function Loop:newTimer()
-  return Timer.new(self)
-end
-
-function Loop:newTcp()
-  return Tcp.new(self)
 end
 
 function Loop:init()
@@ -616,7 +737,7 @@ function Loop:walk(callback)
 end
 
 function Loop:run(mode)
-  mode = assert(UV['UV_RUN_' .. mode], 'Unknown run mode')
+  mode = assert(UV['UV_RUN_' .. string.upper(mode)], 'Unknown run mode')
   return uvCheck(UV.uv_run(self, mode))
 end
 
@@ -624,6 +745,13 @@ ffi.metatype(LoopType, {__index = Loop})
 
 -------------------------------------------------------------------------------
 
+Loop.Req = Req
+Loop.Connect = Connect
+Loop.Write = Write
+Loop.Shutdown = Shutdown
 Loop.Handle = Handle
+Loop.Stream = Stream
+Loop.Tcp = Tcp
+Loop.Timer = Timer
 
-return Loop
+return UV.uv_default_loop()

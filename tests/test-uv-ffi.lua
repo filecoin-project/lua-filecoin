@@ -1,25 +1,31 @@
-local Loop = require 'uv-ffi'
+local loop = require 'uv-ffi'
+local wrapStream = require 'wrap-stream'
 local httpCodec = require 'http-codec'
-
-local loop = Loop.new()
 
 local function main()
   local client = loop:newTcp()
+
+  print('Connecting...')
+  local res = assert(loop:getaddrinfo('luvit.io', 'http', {socktype = 'stream'})[1])
+  p(res)
+  local addr = res.addr
+  local port = res.port
+  client:connect(addr, port)
+  print('Connected!')
+
+  local read, write, close = wrapStream(client)
   local encode = httpCodec.encoder()
   local decode = httpCodec.decoder()
 
-  print('Connecting...')
-  client:connect('127.0.0.1', 8080)
-  print('Connected!')
   print('Writing')
-  client:write(
+  write(
     encode {
       method = 'GET',
-      path = '/README.md',
+      path = '/',
       {'Host', 'localhost:8080'},
       {'User-Agent', 'luvit'},
-      {'Accept', '*.*'}
-      -- {'Connection', 'close'}
+      {'Accept', '*.*'},
+      {'Connection', 'close'}
     }
   )
   print('reading')
@@ -32,11 +38,12 @@ local function main()
         break
       end
       p(out)
-      loop:newTimer():sleep(10)
-      print('waited')
+      local timer = loop:newTimer()
+      timer:sleep(100)
+      timer:close()
       index = newIndex
     else
-      local chunk = client:read()
+      local chunk = read()
       if not chunk then
         break
       end
@@ -44,8 +51,7 @@ local function main()
     end
   end
 
-  client:shutdown()
-  client:close()
+  write()
 end
 
 coroutine.wrap(
@@ -59,17 +65,19 @@ coroutine.wrap(
 )()
 
 loop:run 'DEFAULT'
--- collectgarbage()
--- collectgarbage()
+collectgarbage()
+collectgarbage()
+loop:run 'DEFAULT'
+
 loop:walk(
   function(handle)
-    p('walk', handle)
+    p('auto-closing handle', handle)
+    if not handle:isClosing() then
+      handle:close()
+    end
   end
 )
-collectgarbage()
-collectgarbage()
 
 loop:run 'DEFAULT'
-collectgarbage()
-collectgarbage()
+
 loop:close()

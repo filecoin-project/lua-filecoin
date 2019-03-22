@@ -73,10 +73,7 @@ function Exchange.generate(curveName)
 end
 
 local function check(key)
-  assert(
-    ffi.istype(EcKey, key) and ffi.C.EC_KEY_check_key(key) == 1,
-    'Expected valid EC_KEY'
-  )
+  assert(ffi.istype(EcKey, key) and ffi.C.EC_KEY_check_key(key) == 1, 'Expected valid EC_KEY')
 end
 
 function Exchange.export(key)
