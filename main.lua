@@ -1,4 +1,5 @@
--- luacheck: globals p
+local p = require('pretty-print').prettyPrint
+_G.p = p
 
 local loop = require 'uv-ffi'
 
@@ -27,4 +28,4 @@ end
 
 coroutine.wrap(main)()
 
-loop:run "default"
+loop:run 'default'

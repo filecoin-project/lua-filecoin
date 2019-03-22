@@ -13,7 +13,7 @@ return function(socket, onError)
   local cb
 
   local function onRead(error, value)
-    p('in', value)
+    -- p('in', value)
     if error and onError then
       onError(error)
     end
@@ -37,7 +37,7 @@ return function(socket, onError)
   end
 
   function stream.writeChunk(value)
-    p('out', value)
+    -- p('out', value)
     if value then
       socket:write(value)
     else

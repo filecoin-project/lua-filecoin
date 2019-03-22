@@ -76,6 +76,7 @@ ffi.cdef(
     struct uv_shutdown_s {uint8_t _[%d];};
     struct uv_getaddrinfo_s {uint8_t _[%d];};
     struct uv_tcp_s {uint8_t _[%d];};
+    struct uv_tty_s {uint8_t _[%d];};
     struct uv_timer_s {uint8_t _[%d];};
   ]],
     tonumber(UV.uv_loop_size()),
@@ -84,6 +85,7 @@ ffi.cdef(
     tonumber(UV.uv_req_size(UV.UV_SHUTDOWN)),
     tonumber(UV.uv_req_size(UV.UV_GETADDRINFO)),
     tonumber(UV.uv_handle_size(UV.UV_TCP)),
+    tonumber(UV.uv_handle_size(UV.UV_TTY)),
     tonumber(UV.uv_handle_size(UV.UV_TIMER))
   )
 )
@@ -98,6 +100,7 @@ ffi.cdef [[
   typedef struct uv_handle_s uv_handle_t;
   typedef struct uv_stream_s uv_stream_t;
   typedef struct uv_tcp_s uv_tcp_t;
+  typedef struct uv_tty_s uv_tty_t;
   typedef struct uv_timer_s uv_timer_t;
 
   typedef enum uv_run_mode_e {
@@ -124,7 +127,7 @@ local function makeCallback(type)
     cast(
     type,
     function(...)
-      p("oncall", ...)
+      print('oncall', ...)
       cb:free()
       assert(coroutine.resume(thread, ...))
     end
@@ -360,6 +363,10 @@ ffi.cdef [[
   void *malloc(size_t size);
   void free(void *ptr);
 
+  typedef int uv_file;
+
+  uv_handle_type uv_guess_handle(uv_file file);
+
   int uv_is_active(const uv_handle_t* handle);
   int uv_is_closing(const uv_handle_t* handle);
   void uv_close(uv_handle_t* handle, uv_close_cb close_cb);
@@ -393,6 +400,10 @@ local function onAlloc(handle, suggestedSize, buf)
 end
 
 local allocCb = cast('uv_alloc_cb', onAlloc)
+
+function Loop.guessHandle(fd)
+  return ffi.string(UV.uv_handle_type_name(UV.uv_guess_handle(fd)))
+end
 
 local Handle = {}
 
@@ -508,7 +519,7 @@ end
 
 function Stream:readStart(onRead)
   local function onEvent(_, status, buf)
-    p("onRead", _, status, buf)
+    print('onRead', _, status, buf)
     if status == 0 then
       return
     end
@@ -610,6 +621,58 @@ function Tcp:connect(host, port)
 end
 
 ffi.metatype(Tcp.type, {__index = Tcp})
+
+-------------------------------------------------------------------------------
+-- Tty
+-------------------------------------------------------------------------------
+
+ffi.cdef [[
+  typedef enum {
+    /* Initial/normal terminal mode */
+    UV_TTY_MODE_NORMAL,
+    /* Raw input mode (On Windows, ENABLE_WINDOW_INPUT is also enabled) */
+    UV_TTY_MODE_RAW,
+    /* Binary-safe I/O mode for IPC (Unix-only) */
+    UV_TTY_MODE_IO
+  } uv_tty_mode_t;
+
+  int uv_tty_init(uv_loop_t* loop, uv_tty_t* handle, uv_file fd, int unused);
+  int uv_tty_set_mode(uv_tty_t* handle, uv_tty_mode_t mode);
+  int uv_tty_reset_mode(void);
+  int uv_tty_get_winsize(uv_tty_t* handle, int* width, int* height);
+]]
+
+local Tty = setmetatable({}, {__index = Stream})
+Tty.type = ffi.typeof 'uv_tty_t'
+
+function Loop:newTty(fd)
+  local tty = Tty.type()
+  tty:init(self, fd)
+  return tty
+end
+
+function Tty:init(loop, fd)
+  uvCheck(UV.uv_tty_init(loop, self, fd, 0))
+end
+
+function Tty:setMode(mode)
+  uvCheck(
+    UV.uv_tty_set_mode(self, assert(UV['UV_TTY_MODE_' .. string.upper(mode)], 'Unknown tty mode'))
+  )
+end
+
+function Tty:resetMode()
+  uvCheck(UV.uv_tty_reset_mode())
+end
+
+function Tty:getWinsize()
+  local width = ffi.new('int[1]')
+  local height = ffi.new('int[1]')
+  uvCheck(UV.uv_tty_get_winsize(self, width, height))
+  return tonumber(width[0]), tonumber(height[0])
+end
+
+ffi.metatype(Tty.type, {__index = Tty})
 
 -------------------------------------------------------------------------------
 -- Timer
