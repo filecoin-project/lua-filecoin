@@ -61,32 +61,32 @@ local KeyEnum = {
   ECDSA = 3
 }
 
-local function selectBest(order, p1, p2)
-  local f, s
-  if order < 0 then
-    f = p2:gmatch('([^,]+)')
-    s = p1:gmatch('([^,]+)')
-  elseif order > 0 then
-    f = p1:gmatch('([^,]+)')
-    s = p2:gmatch('([^,]+)')
-  else
-    return p1:match('([^,]+)')
+local function selectBest(order, set1, set2)
+  if order == 0 then
+    return set1:match('([^,]+)')
   end
-  for fc in f do
-    for sc in s do
-      if fc == sc then
-        return fc
+  if order < 0 then
+    set2, set1 = set1, set2
+  end
+  for first in set1:gmatch('([^,]+)') do
+    for second in set2:gmatch('([^,]+)') do
+      if first == second then
+        return first
       end
     end
   end
 end
 
--- Map secio names to openssl names
-local ExchangeNames = {
-  ['P-256'] = 'prime256v1', -- X9.62/SECG curve over a 256 bit prime field
-  ['P-384'] = 'secp384r1', -- NIST/SECG curve over a 384 bit prime field
-  ['P-512'] = 'secp521r1' -- NIST/SECG curve over a 521 bit prime field
-}
+-- Sanity checks for selectBest algorithm
+assert(selectBest(0, 'zed', 'three,two,one') == 'zed')
+assert(selectBest(1, 'one,two,three', 'three,two,one') == 'one')
+assert(selectBest(-1, 'one,two,three', 'three,two,one') == 'three')
+assert(selectBest(1, 'one', 'three,two,one') == 'one')
+assert(selectBest(1, 'two,three', 'one,three,two') == 'two')
+assert(selectBest(1, '5,4,3', '1,2,3') == '3')
+assert(selectBest(-1, '5,4,3', '1,2,3') == '3')
+assert(selectBest(-1, 'two,three', 'one,three,two') == 'three')
+assert(selectBest(-1, 'one', 'three,two,one') == 'one')
 
 local CipherMap = {
   ['AES-128'] = {
@@ -109,7 +109,7 @@ local CipherMap = {
 -- secret is shared secret from ECDH exchange
 -- output is sets of keys
 local function keyStretcher(cipherType, hashType, secret)
-  local sizes = assert(CipherMap[cipherType])
+  local sizes = assert(CipherMap[cipherType], 'Unsupported ciphertype')
   local ivSize = sizes.ivSize
   local keySize = sizes.keySize
 
@@ -247,6 +247,7 @@ function Secio.wrap(stream)
   local sharedSecret = Exchange.exchange(e1, e2)
   p('sharedSecret', sharedSecret)
 
+  p(cipher, hash, sharedSecret)
   local k1, k2 = keyStretcher(cipher, hash, sharedSecret)
 
   -- use random nonces to decide order.

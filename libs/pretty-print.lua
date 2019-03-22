@@ -296,14 +296,19 @@ end
 
 -- Print replacement that goes through libuv.  This is useful on windows
 -- to use libuv's code to translate ansi escape codes to windows API calls.
--- function _G.print(...)
---   local n = select('#', ...)
---   local arguments = {...}
---   for i = 1, n do
---     arguments[i] = tostring(arguments[i])
---   end
---   stdout:write(table.concat(arguments, '\t') .. '\n')
--- end
+local oldPrint = _G.print
+function _G.print(...)
+  local _, main = coroutine.running()
+  if main then
+    return oldPrint(...)
+  end
+  local n = select('#', ...)
+  local arguments = {...}
+  for i = 1, n do
+    arguments[i] = tostring(arguments[i])
+  end
+  stdout:write(table.concat(arguments, '\t') .. '\n')
+end
 
 function prettyPrint(...)
   local n = select('#', ...)
@@ -311,7 +316,7 @@ function prettyPrint(...)
   for i = 1, n do
     arguments[i] = dump(arguments[i])
   end
-  stdout:write(table.concat(arguments, '\t') .. '\n')
+  print(unpack(arguments))
 end
 
 if loop.guessHandle(0) == 'tty' then
