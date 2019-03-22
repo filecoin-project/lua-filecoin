@@ -77,6 +77,7 @@ ffi.cdef(
     struct uv_getaddrinfo_s {uint8_t _[%d];};
     struct uv_tcp_s {uint8_t _[%d];};
     struct uv_tty_s {uint8_t _[%d];};
+    struct uv_pipe_s {uint8_t _[%d];};
     struct uv_timer_s {uint8_t _[%d];};
   ]],
     tonumber(UV.uv_loop_size()),
@@ -86,6 +87,7 @@ ffi.cdef(
     tonumber(UV.uv_req_size(UV.UV_GETADDRINFO)),
     tonumber(UV.uv_handle_size(UV.UV_TCP)),
     tonumber(UV.uv_handle_size(UV.UV_TTY)),
+    tonumber(UV.uv_handle_size(UV.UV_NAMED_PIPE)),
     tonumber(UV.uv_handle_size(UV.UV_TIMER))
   )
 )
@@ -101,6 +103,7 @@ ffi.cdef [[
   typedef struct uv_stream_s uv_stream_t;
   typedef struct uv_tcp_s uv_tcp_t;
   typedef struct uv_tty_s uv_tty_t;
+  typedef struct uv_pipe_s uv_pipe_t;
   typedef struct uv_timer_s uv_timer_t;
 
   typedef enum uv_run_mode_e {
@@ -596,19 +599,18 @@ Tcp.type = ffi.typeof 'uv_tcp_t'
 
 function Loop:newTcp()
   local tcp = Tcp.type()
-  tcp:init(self)
+  uvCheck(UV.uv_tcp_init(self, tcp))
   return tcp
 end
 
-function Tcp:init(loop)
-  return uvCheck(UV.uv_tcp_init(loop, self))
-end
-
 function Tcp:getsockname()
+  -- TODO: Improve output
   return UV.uv_tcp_getsockname(self)
 end
 
 function Tcp:getpeername()
+  -- TODO: Improve output
+  return UV.uv_tcp_getpeername(self)
 end
 
 function Tcp:connect(host, port)
@@ -617,7 +619,7 @@ function Tcp:connect(host, port)
   UV.uv_ip4_addr(host, port, addr)
   uvCheck(UV.uv_tcp_connect(req, self, addr, makeCallback 'uv_connect_cb'))
   local _, status = coroutine.yield()
-  return uvCheck(status)
+  uvCheck(status)
 end
 
 ffi.metatype(Tcp.type, {__index = Tcp})
@@ -647,12 +649,8 @@ Tty.type = ffi.typeof 'uv_tty_t'
 
 function Loop:newTty(fd)
   local tty = Tty.type()
-  tty:init(self, fd)
+  uvCheck(UV.uv_tty_init(self, tty, fd, 0))
   return tty
-end
-
-function Tty:init(loop, fd)
-  uvCheck(UV.uv_tty_init(loop, self, fd, 0))
 end
 
 function Tty:setMode(mode)
@@ -675,6 +673,44 @@ end
 ffi.metatype(Tty.type, {__index = Tty})
 
 -------------------------------------------------------------------------------
+-- Pipe
+-------------------------------------------------------------------------------
+
+ffi.cdef [[
+  int uv_pipe_init(uv_loop_t* loop, uv_pipe_t* handle, int ipc);
+  int uv_pipe_open(uv_pipe_t* handle, uv_file file);
+  int uv_pipe_bind(uv_pipe_t* handle, const char* name);
+  void uv_pipe_connect(uv_connect_t* req, uv_pipe_t* handle, const char* name, uv_connect_cb cb);
+  int uv_pipe_getsockname(const uv_pipe_t* handle, char* buffer, size_t* size);
+  int uv_pipe_getpeername(const uv_pipe_t* handle, char* buffer, size_t* size);
+  void uv_pipe_pending_instances(uv_pipe_t* handle, int count);
+  int uv_pipe_pending_count(uv_pipe_t* handle);
+  uv_handle_type uv_pipe_pending_type(uv_pipe_t* handle);
+  int uv_pipe_chmod(uv_pipe_t* handle, int flags);
+]]
+
+local Pipe = setmetatable({}, {__index = Stream})
+Pipe.type = ffi.typeof 'uv_pipe_t'
+
+function Loop:newPipe(ipc)
+  local pipe = Pipe.type()
+  uvCheck(UV.uv_pipe_init(self, pipe, ipc and 1 or 0))
+  return pipe
+end
+
+function Pipe:open(fd)
+  uvCheck(UV.uv_pipe_open(self, fd))
+end
+
+function Pipe:bind(path)
+  uvCheck(UV.uv_pipe_bind(self, path))
+end
+
+-- TODO: add more pipe functions
+
+ffi.metatype(Pipe.type, {__index = Pipe})
+
+-------------------------------------------------------------------------------
 -- Timer
 -------------------------------------------------------------------------------
 
@@ -694,12 +730,8 @@ Timer.Type = ffi.typeof 'uv_timer_t'
 
 function Loop:newTimer()
   local timer = Timer.Type()
-  timer:init(self)
+  uvCheck(UV.uv_timer_init(self, timer))
   return timer
-end
-
-function Timer:init(loop)
-  uvCheck(UV.uv_timer_init(loop, self))
 end
 
 function Timer:sleep(timeout)
@@ -762,16 +794,12 @@ local LoopType = ffi.typeof 'uv_loop_t'
 
 function Loop.new()
   local loop = LoopType()
-  loop:init()
+  uvCheck(UV.uv_loop_init(loop))
   return loop
 end
 
-function Loop:init()
-  return uvCheck(UV.uv_loop_init(self))
-end
-
 function Loop:close()
-  return uvCheck(UV.uv_loop_close(self))
+  uvCheck(UV.uv_loop_close(self))
 end
 
 function Loop:alive()
@@ -801,7 +829,7 @@ end
 
 function Loop:run(mode)
   mode = assert(UV['UV_RUN_' .. string.upper(mode)], 'Unknown run mode')
-  return uvCheck(UV.uv_run(self, mode))
+  return tonumber(uvCheck(UV.uv_run(self, mode)))
 end
 
 ffi.metatype(LoopType, {__index = Loop})
