@@ -52,3 +52,7 @@ In secio, there are three different configuration parameters that both parties n
 - Cipher to use for actual encryption.  Common options are `AES-256`, `AES-128` and `Blowfish`.  I want to add something `Gimli` based.
 - hash used for MAC, common hash algorithms are `SHA256` and `SHA512`.  I want to also use `Gimli` for this.
 - Each peer needs to also us a public key for signing part of the handshake and optionally authenticating itself.  This key tends to be `RSA-2048`. I want to use `ED25519` for faster ephermeral key generation.
+
+Basically, I want to be able to write embedded clients using https://github.com/jedisct1/libhydrogen which is why I want newer options added.
+
+
