@@ -48,7 +48,7 @@ But then we need to perform the secio handshake on this transport.  It's similar
 
 In secio, there are three different configuration parameters that both parties need to negotiate.  They are:
 
-- ECDH algorithms for key exchange, `P-256`, `P-384`, and `P-521` are common.  I want to see if I can add `Curve25519` as well.
+- ECDH algorithms for key exchange, `P-256`, `P-384`, and `P-521` are common. These are their NIST curvenames.  Typically in openssl, you'll need to know their ASN1 OIDs `prime256v1`, `secp384r1` and `secp521r1`. I want to see if I can add `Curve25519` as well.
 - Cipher to use for actual encryption.  Common options are `AES-256`, `AES-128` and `Blowfish`.  I want to add something `Gimli` based.
 - hash used for MAC, common hash algorithms are `SHA256` and `SHA512`.  I want to also use `Gimli` for this.
 - Each peer needs to also us a public key for signing part of the handshake and optionally authenticating itself.  This key tends to be `RSA-2048`. I want to use `ED25519` for faster ephermeral key generation.
