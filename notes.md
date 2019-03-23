@@ -9,6 +9,7 @@ Then for some reason it sends `/multistream/1.0.0\n` again?
 Now how do we create a mplex stream?  Does `/plaintext/1.0.0` assume mplex without encryption or do we need to do something else?  Also is the mplex with it's own length header tunneled inside framed messages or replace the framed multistream messages?
 
 ----------------------------------------
+## Multistream and Mplex
 
 multistream negotiation is used in several places.  Once to choose plaintext or encryption, again to choose mplex, and then again inside the tunneled mplex streams I think
 
@@ -30,6 +31,8 @@ So, for example to speak plaintext mplex, the conversation looks something like 
 After this point, the TCP socket is raw mplex messages.  These have a slightly different framing:
 
 Each Message is framed with `varint header`, `varint length`, `message` Where the header contains the flag as the lower 3 bits and the stream ID for the rest of the bits.
+
+## Encryption with Secio
 
 Notice that there was nothing to do between selecting plaintext and selecting mplex.  Things are a little more complicated with encryption (aka secio).
 
