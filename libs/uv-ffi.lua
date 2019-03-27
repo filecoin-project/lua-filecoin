@@ -1,7 +1,7 @@
 local ffi = require 'ffi'
 local cast = ffi.cast
 local C = ffi.C
-local UV = ffi.load('uv')
+local UV = C--ffi.load('uv')
 
 if ffi.os == 'Windows' then
   ffi.cdef [[
