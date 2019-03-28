@@ -12,12 +12,8 @@ function Switch.dial(host, port)
 
   -- Negotiate protocol
   -- Start test server with `ipfs daemon`
-  print('secio start')
   Multiselect.negotiate(stream, '/secio/1.0.0')
-  print('secio middle')
-
   stream = Secio.wrap(stream)
-  print('secio end')
 
   -- Upgrade to mplex protocol and return handle to mp object.
   return Mplex.start(stream)

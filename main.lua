@@ -26,12 +26,5 @@ local function main()
 end
 
 coroutine.wrap(main)()
-local timer = uv.new_timer()
-timer:start(
-  1000,
-  1000,
-  function()
-    print('.')
-  end
-)
+
 uv.run()
