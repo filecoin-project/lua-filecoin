@@ -1,4 +1,3 @@
-local makeCallback = require('make-callback')
 local Connection = require 'connection'
 
 -- This is a simple wrapper around raw libuv streams that lets
@@ -10,20 +9,22 @@ local Connection = require 'connection'
 return function(socket, onError)
   local paused = true
   local stream = Connection.newPush()
+  local cb
+
+  local function onRead(error, value)
+    -- p('in', value)
+    if error and onError then
+      onError(error)
+    end
+    return stream.onChunk(value)
+  end
 
   function stream.onStart()
     if not paused then
       return
     end
     paused = false
-    local function onRead(error, value)
-      p('in', value)
-      if error and onError then
-        onError(error)
-      end
-      return stream.onChunk(value)
-    end
-    socket:read_start(onRead)
+    cb = socket:readStart(cb or onRead)
   end
 
   function stream.onStop()
@@ -31,13 +32,16 @@ return function(socket, onError)
       return
     end
     paused = true
-    socket:read_stop()
+    socket:readStop()
   end
 
   function stream.writeChunk(value)
-    p('out', value)
-    socket:write(value, makeCallback())
-    coroutine.yield()
+    -- p('out', value)
+    if value then
+      socket:write(value)
+    else
+      socket:shutdown()
+    end
   end
 
   stream.socket = socket

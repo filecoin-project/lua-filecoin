@@ -1,13 +1,12 @@
+local uv = require 'uv'
 local p = require('pretty-print').prettyPrint
 _G.p = p
-
-local loop = require 'uv-ffi'
 
 local Switch = require 'switch'
 local Multiselect = require 'multiselect'
 
 local function main()
-  local mp = Switch.dial('::1', 4001)
+  local mp = Switch.dial('localhost', 4001)
   print 'Connected!'
   p(mp.socket:getpeername())
 
@@ -27,5 +26,12 @@ local function main()
 end
 
 coroutine.wrap(main)()
-
-loop:run 'default'
+local timer = uv.new_timer()
+timer:start(
+  1000,
+  1000,
+  function()
+    print('.')
+  end
+)
+uv.run()
