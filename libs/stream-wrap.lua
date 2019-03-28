@@ -1,4 +1,3 @@
-local makeCallback = require('make-callback')
 local Connection = require 'connection'
 
 -- This is a simple wrapper around raw libuv streams that lets

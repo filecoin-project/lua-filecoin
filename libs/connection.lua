@@ -41,6 +41,8 @@ local function wrapRead(readNext)
   return readByte, readChunk
 end
 
+Connection.wrapRead = wrapRead
+
 function Connection.newPush()
   local queue = {}
   local reads = 1

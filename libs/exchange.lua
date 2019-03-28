@@ -8,6 +8,7 @@ Related reading:
 
 ]]
 local ffi = require 'ffi'
+local C = ffi.C
 local newBuffer = require 'buffer'
 
 ffi.cdef [[
@@ -56,37 +57,37 @@ local function getNid(curveName)
   local nid = NistToNid[curveName]
   if not nid then
     local asnName = assert(NistToASN1[curveName], 'Unsupported curvename')
-    nid = ffi.C.OBJ_sn2nid(asnName)
+    nid = C.OBJ_sn2nid(asnName)
     NistToNid[curveName] = nid
   end
   return nid
 end
 
-local bn = ffi.C.BN_CTX_new()
+local bn = C.BN_CTX_new()
 
 local Exchange = {}
 
 function Exchange.generate(curveName)
-  local key = ffi.C.EC_KEY_new_by_curve_name(getNid(curveName))
-  assert(ffi.C.EC_KEY_generate_key(key) == 1)
+  local key = C.EC_KEY_new_by_curve_name(getNid(curveName))
+  assert(C.EC_KEY_generate_key(key) == 1)
   return key
 end
 
 local function check(key)
-  assert(ffi.istype(EcKey, key) and ffi.C.EC_KEY_check_key(key) == 1, 'Expected valid EC_KEY')
+  assert(ffi.istype(EcKey, key) and C.EC_KEY_check_key(key) == 1, 'Expected valid EC_KEY')
 end
 
 function Exchange.export(key)
   check(key)
-  local group = ffi.C.EC_KEY_get0_group(key)
-  local point = ffi.C.EC_KEY_get0_public_key(key)
+  local group = C.EC_KEY_get0_group(key)
+  local point = C.EC_KEY_get0_public_key(key)
   -- TODO: find if we can derive this size value from the group.
   local buf = newBuffer(133)
   local size =
-    ffi.C.EC_POINT_point2oct(
+    C.EC_POINT_point2oct(
     group,
     point,
-    ffi.C.POINT_CONVERSION_UNCOMPRESSED,
+    C.POINT_CONVERSION_UNCOMPRESSED,
     buf,
     ffi.sizeof(buf),
     bn
@@ -95,36 +96,36 @@ function Exchange.export(key)
 end
 
 function Exchange.import(curveName, str)
-  local key = assert(ffi.C.EC_KEY_new_by_curve_name(getNid(curveName)))
-  local group = assert(ffi.C.EC_KEY_get0_group(key))
-  local point = assert(ffi.C.EC_POINT_new(group))
-  ffi.C.EC_POINT_oct2point(group, point, str, #str, bn)
-  ffi.C.EC_KEY_set_public_key(key, point)
-  ffi.C.EC_POINT_free(point) -- TODO: os this safe?
+  local key = assert(C.EC_KEY_new_by_curve_name(getNid(curveName)))
+  local group = assert(C.EC_KEY_get0_group(key))
+  local point = assert(C.EC_POINT_new(group))
+  C.EC_POINT_oct2point(group, point, str, #str, bn)
+  C.EC_KEY_set_public_key(key, point)
+  C.EC_POINT_free(point) -- TODO: os this safe?
   return key
 end
 
 function Exchange.free(key)
   check(key)
-  ffi.C.EC_KEY_free(key)
+  C.EC_KEY_free(key)
 end
 
 function Exchange.exchange(key, peerkey)
   check(key)
   check(peerkey)
-  local group = ffi.C.EC_KEY_get0_group(key)
-  local fieldSize = ffi.C.EC_GROUP_get_degree(group)
+  local group = C.EC_KEY_get0_group(key)
+  local fieldSize = C.EC_GROUP_get_degree(group)
   local secretLen = math.floor((fieldSize + 7) / 8)
   local secret = newBuffer(secretLen)
-  local point = ffi.C.EC_KEY_get0_public_key(peerkey)
-  local written = ffi.C.ECDH_compute_key(secret, secretLen, point, key, nil)
+  local point = C.EC_KEY_get0_public_key(peerkey)
+  local written = C.ECDH_compute_key(secret, secretLen, point, key, nil)
   assert(written == secretLen)
   return ffi.string(secret, secretLen)
 end
 
 function Exchange.cleanup()
   assert(bn)
-  ffi.C.BN_CTX_free(bn)
+  C.BN_CTX_free(bn)
   bn = nil
 end
 

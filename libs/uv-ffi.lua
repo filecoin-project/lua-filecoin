@@ -1,7 +1,7 @@
 local ffi = require 'ffi'
 local cast = ffi.cast
 local C = ffi.C
-local UV = C--ffi.load('uv')
+local UV = ffi.load('uv')
 
 if ffi.os == 'Windows' then
   ffi.cdef [[
@@ -130,7 +130,7 @@ local function makeCallback(type)
     cast(
     type,
     function(...)
-      print('oncall', ...)
+      -- print('oncall', ...)
       cb:free()
       assert(coroutine.resume(thread, ...))
     end
@@ -522,7 +522,7 @@ end
 
 function Stream:readStart(onRead)
   local function onEvent(_, status, buf)
-    print('onRead', _, status, buf)
+    -- print('onRead', _, status, buf)
     if status == 0 then
       return
     end

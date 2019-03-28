@@ -1,5 +1,6 @@
 local Protobuf = require 'protobuf'
 local Msg = require 'msgframe'
+local prettyPrint = require 'pretty-print'
 
 local ssl = require 'openssl'
 local pkey = ssl.pkey
@@ -7,24 +8,47 @@ local digest = ssl.digest
 local hmac = ssl.hmac
 local Exchange = require 'exchange'
 
+local Connection = require 'connection'
+
 local ffi = require 'ffi'
+local C = ffi.C
 ffi.cdef [[
   typedef struct file_t FILE;
   FILE *fopen(const char *filename, const char *mode);
   int EC_KEY_print_fp(FILE *fp, const EC_KEY *key, int off);
+  int BIO_dump_fp(FILE *fp, const char *s, int len);
+  int	BIO_dump_indent_fp(FILE *fp, const char *s, int len, int indent);
+
 ]]
 
 local stdout = ffi.C.fopen('/dev/stdout', 'w')
 
 local function log(key)
-  ffi.C.EC_KEY_print_fp(stdout, key, 2)
+  C.EC_KEY_print_fp(stdout, key, 2)
+end
+
+local function dump(label, str, indent)
+  indent = indent or 0
+  print(string.rep(' ', indent) .. prettyPrint.colorize('highlight', label) .. ':')
+  indent = indent + 2
+  local typ = type(str)
+  if typ == 'string' then
+    C.BIO_dump_indent_fp(stdout, str, #str, indent)
+  elseif typ == 'table' then
+    for k, v in pairs(str) do
+      dump(k, v, indent)
+    end
+    return
+  else
+    print(string.rep(' ', indent) .. prettyPrint.dump(str))
+  end
 end
 
 local Secio = {}
 
 local SupportedExchanges = 'P-256,P-384,P-521'
 -- local SupportedCiphers = 'AES-256,AES-128,Blowfish'
-local SupportedCiphers = 'Blowfish'
+local SupportedCiphers = 'AES-256,AES-128'
 local SupportedHashes = 'SHA256,SHA512'
 
 local ProposeSchema = {
@@ -41,11 +65,6 @@ local ExchangeSchema = {
 }
 
 local PublicKeySchema = {
-  'type',
-  'data'
-}
-
-local PrivateKeySchema = {
   'type',
   'data'
 }
@@ -128,28 +147,94 @@ local function keyStretcher(cipherType, hashType, secret)
     left = left - #b
     a = hmac.digest(hashType, a, secret, true)
   end
-  p(parts)
   local result = table.concat(parts)
   local half = resultLength / 2
   return {
-    iv = result:sub(1, ivSize),
-    cipherKey = result:sub(ivSize + 1, ivSize + keySize),
-    macKey = result:sub(ivSize + keySize + 1, ivSize + keySize + hmacKeySize)
+    result:sub(1, ivSize),
+    result:sub(ivSize + keySize + 1, ivSize + keySize + hmacKeySize),
+    result:sub(ivSize + 1, ivSize + keySize),
   }, {
-    iv = result:sub(half + 1, half + ivSize),
-    cipherKey = result:sub(half + ivSize + 1, half + ivSize + keySize),
-    macKey = result:sub(half + ivSize + keySize + 1, half + ivSize + keySize + hmacKeySize)
+    result:sub(half + 1, half + ivSize),
+    result:sub(half + ivSize + keySize + 1, half + ivSize + keySize + hmacKeySize),
+    result:sub(half + ivSize + 1, half + ivSize + keySize),
   }
 end
 
-local function wrapStream(stream, hashType, k1, k2)
-  p {stream = stream, hashType = hashType, k1 = k1, k2 = k2}
+ffi.cdef [[
+
+  enum {
+    AES_MAXNR = 14,
+    AES_BLOCK_SIZE = 16,
+  };
+
+  /* This should be a hidden type, but EVP requires that the size be known */
+  struct aes_key_st {
+    unsigned long rd_key[4 * (AES_MAXNR + 1)];
+    int rounds;
+  };
+
+  typedef struct aes_key_st AES_KEY;
+
+  const char *AES_options(void);
+  int AES_set_encrypt_key(const unsigned char *userKey, const int bits,
+                          AES_KEY *key);
+  int AES_set_decrypt_key(const unsigned char *userKey, const int bits,
+                          AES_KEY *key);
+  void AES_encrypt(const unsigned char *in, unsigned char *out,
+                   const AES_KEY *key);
+  void AES_decrypt(const unsigned char *in, unsigned char *out,
+                   const AES_KEY *key);
+
+  typedef void(*block128_f)(const unsigned char in[16], unsigned char out[16], const void *key);
+
+  void CRYPTO_ctr128_encrypt (
+    const unsigned char *in,
+    unsigned char *out,
+    size_t len,
+    const void *key,
+    unsigned char ivec[16],
+    unsigned char ecount_buf[16],
+    unsigned int *num,
+    block128_f block
+  );
+]]
+
+-- [4 bytes len(therest)][ cipher(data) ][ H(cipher(data)) ]
+-- CTR mode AES
+local function wrapStream(stream, cipherType, hashType, k1, k2)
+
   -- local mac1 = message => hmac.digest(hashType, message, k1.macKey)
   -- local mac2 = message => hmac.digest(hashType, message, k2.macKey)
   -- local cipher1 = aes.create()
   -- local function writeChunk(chunk)
 
-  -- end
+  local function readNext()
+    local frame = Msg.readFrame(stream)
+    dump('frame', frame)
+  end
+
+  local ivec = ffi.new('unsigned char[16]')
+  local ecountBuf = ffi.new('unsigned char[16]')
+  local num = ffi.new('unsigned int[1]')
+  local key = ffi.new('AES_KEY')
+
+  local function writeChunk(chunk)
+    dump('to write', chunk)
+    local length = #chunk
+    local out = ffi.new('unsigned char[?]', length)
+    C.CRYPTO_ctr128_encrypt(chunk, out, length, k1.cipherKey, ivec, ecountBuf, num, C.AES_encrypt)
+    local hash = 'TODO:HASH'
+    Msg.writeFrame(ffi.string(out, length) .. hash)
+  end
+
+  local readByte, readChunk = Connection.wrapRead(readNext)
+
+  return {
+    readByte = readByte,
+    readChunk = readChunk,
+    writeChunk = writeChunk,
+    stream = stream
+  }
 end
 
 function Secio.wrap(stream)
@@ -173,14 +258,16 @@ function Secio.wrap(stream)
     ciphers = SupportedCiphers,
     hashes = SupportedHashes
   }
+  dump('proposeOut', proposeOut)
   local proposeOutBytes = Protobuf.encodeTable(ProposeSchema, proposeOut)
   Msg.writeFrame(stream, proposeOutBytes)
 
   -- Receive and parse their Propose packet
   local proposeInBytes = Msg.readFrame(stream)
   local proposeIn = Protobuf.decodeTable(ProposeSchema, proposeInBytes)
+  dump('proposeIn', proposeIn)
 
-  ----------------------------------------------------------------------------
+  --------------------------------------------------------------------------
   -- step 1.1 Identify -- get identity from their key
   local skey = Protobuf.decodeTable(PublicKeySchema, proposeIn.pubkey)
   assert(skey.type == KeyEnum.RSA, 'Expected RSA key from server')
@@ -202,6 +289,15 @@ function Secio.wrap(stream)
   local cipher = selectBest(order, proposeOut.ciphers, proposeIn.ciphers)
   local hash = selectBest(order, proposeOut.hashes, proposeIn.hashes)
 
+  dump(
+    'config',
+    {
+      exchange = exchange,
+      cipher = cipher,
+      hash = hash
+    }
+  )
+
   ----------------------------------------------------------------------------
   -- step 2. Exchange -- exchange (signed) ephemeral keys. verify signatures.
 
@@ -221,10 +317,12 @@ function Secio.wrap(stream)
     epubkey = p1,
     signature = key1:sign(selectionOut)
   }
+  dump('exchangeOut', exchangeOut)
   Msg.writeFrame(stream, Protobuf.encodeTable(ExchangeSchema, exchangeOut))
 
   -- Receive and decode their Exchange packet
   local exchangeIn = Protobuf.decodeTable(ExchangeSchema, Msg.readFrame(stream))
+  dump('exchangeIn', exchangeIn)
 
   ----------------------------------------------------------------------------
   -- step 2.1. Verify -- verify their exchange packet is good.
@@ -238,31 +336,35 @@ function Secio.wrap(stream)
   }
 
   local verified = key2:verify(selectionInBytes, exchangeIn.signature)
-  p('verified?', verified)
+  dump('verified', verified)
   assert(verified, 'Signature verification failed in exchange')
 
   ----------------------------------------------------------------------------
   -- step 2.2. Keys -- generate keys for mac + encryption
 
   local sharedSecret = Exchange.exchange(e1, e2)
-  p('sharedSecret', sharedSecret)
+  dump('sharedSecret', sharedSecret)
 
-  p(cipher, hash, sharedSecret)
   local k1, k2 = keyStretcher(cipher, hash, sharedSecret)
 
   -- use random nonces to decide order.
   if order < 0 then
     k2, k1 = k1, k2
   end
-  p {k1, k2}
+
+  dump('k1', k1)
+  dump('k2', k2)
 
   ----------------------------------------------------------------------------
   -- step 2.3. MAC + Cipher -- prepare MAC + cipher
 
-  stream = wrapStream(stream, hash, k1, k2)
+  stream = wrapStream(stream, cipher, hash, k1, k2)
+  dump('stream', stream)
 
   ----------------------------------------------------------------------------
   -- step 3. Finish -- send expected message to verify encryption works (send local nonce)
+
+  stream.writeChunk('Hello World\n')
 
   -- TODO: exchange verification messages
 
