@@ -1,4 +1,5 @@
 local uv = require 'uv'
+local ssl = require 'openssl'
 local p = require('pretty-print').prettyPrint
 _G.p = p
 
@@ -14,8 +15,9 @@ local function main()
   Multiselect.negotiate(stream, '/ipfs/ping/1.0.0')
   print 'Negotiated mplex ping..'
 
-  local ping = string.rep('*', 32)
+  local ping = ssl.random(32)
   local before = uv.hrtime()
+ 
   stream.writeChunk(ping)
   assert(stream.readChunk(32) == ping)
   local after = uv.hrtime()
