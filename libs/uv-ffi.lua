@@ -522,7 +522,7 @@ end
 
 function Stream:readStart(onRead)
   local function onEvent(_, status, buf)
-    -- print('onRead', _, status, buf)
+    print('onRead', _, status, buf)
     if status == 0 then
       return
     end

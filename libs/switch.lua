@@ -15,8 +15,6 @@ function Switch.dial(host, port)
   Multiselect.negotiate(stream, '/secio/1.0.0')
 
   stream = Secio.wrap(stream)
-  print 'TODO: finish secio'
-  require('os').exit(-1)
 
   -- Upgrade to mplex protocol and return handle to mp object.
   return Mplex.start(stream)

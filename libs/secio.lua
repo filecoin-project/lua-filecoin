@@ -1,6 +1,7 @@
 local Protobuf = require 'protobuf'
 local Msg = require 'msgframe'
 local prettyPrint = require 'pretty-print'
+local newBuffer = require 'buffer'
 
 local ssl = require 'openssl'
 local pkey = ssl.pkey
@@ -150,81 +151,174 @@ local function keyStretcher(cipherType, hashType, secret)
   local result = table.concat(parts)
   local half = resultLength / 2
   return {
-    result:sub(1, ivSize),
-    result:sub(ivSize + keySize + 1, ivSize + keySize + hmacKeySize),
-    result:sub(ivSize + 1, ivSize + keySize),
+    iv = result:sub(1, ivSize),
+    macKey = result:sub(ivSize + keySize + 1, ivSize + keySize + hmacKeySize),
+    key = result:sub(ivSize + 1, ivSize + keySize)
   }, {
-    result:sub(half + 1, half + ivSize),
-    result:sub(half + ivSize + keySize + 1, half + ivSize + keySize + hmacKeySize),
-    result:sub(half + ivSize + 1, half + ivSize + keySize),
+    iv = result:sub(half + 1, half + ivSize),
+    macKey = result:sub(half + ivSize + keySize + 1, half + ivSize + keySize + hmacKeySize),
+    key = result:sub(half + ivSize + 1, half + ivSize + keySize)
   }
 end
 
 ffi.cdef [[
+  typedef struct evp_cipher_st EVP_CIPHER;
+  typedef struct evp_cipher_ctx_st EVP_CIPHER_CTX;
+  typedef struct engine_st ENGINE;
 
-  enum {
-    AES_MAXNR = 14,
-    AES_BLOCK_SIZE = 16,
-  };
+  EVP_CIPHER_CTX *EVP_CIPHER_CTX_new(void);
+  int EVP_CIPHER_CTX_reset(EVP_CIPHER_CTX *ctx);
+  void EVP_CIPHER_CTX_free(EVP_CIPHER_CTX *ctx);
 
-  /* This should be a hidden type, but EVP requires that the size be known */
-  struct aes_key_st {
-    unsigned long rd_key[4 * (AES_MAXNR + 1)];
-    int rounds;
-  };
+  int EVP_EncryptInit_ex(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *type,
+         ENGINE *impl, const unsigned char *key, const unsigned char *iv);
+  int EVP_EncryptUpdate(EVP_CIPHER_CTX *ctx, unsigned char *out,
+         int *outl, const unsigned char *in, int inl);
+  int EVP_EncryptFinal_ex(EVP_CIPHER_CTX *ctx, unsigned char *out,
+         int *outl);
 
-  typedef struct aes_key_st AES_KEY;
+  int EVP_DecryptInit_ex(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *type,
+         ENGINE *impl, const unsigned char *key, const unsigned char *iv);
+  int EVP_DecryptUpdate(EVP_CIPHER_CTX *ctx, unsigned char *out,
+         int *outl, const unsigned char *in, int inl);
+  int EVP_DecryptFinal_ex(EVP_CIPHER_CTX *ctx, unsigned char *outm, int *outl);
 
-  const char *AES_options(void);
-  int AES_set_encrypt_key(const unsigned char *userKey, const int bits,
-                          AES_KEY *key);
-  int AES_set_decrypt_key(const unsigned char *userKey, const int bits,
-                          AES_KEY *key);
-  void AES_encrypt(const unsigned char *in, unsigned char *out,
-                   const AES_KEY *key);
-  void AES_decrypt(const unsigned char *in, unsigned char *out,
-                   const AES_KEY *key);
 
-  typedef void(*block128_f)(const unsigned char in[16], unsigned char out[16], const void *key);
+  const EVP_CIPHER *EVP_aes_128_ctr(void);
+  const EVP_CIPHER *EVP_aes_256_ctr(void);
 
-  void CRYPTO_ctr128_encrypt (
-    const unsigned char *in,
-    unsigned char *out,
-    size_t len,
-    const void *key,
-    unsigned char ivec[16],
-    unsigned char ecount_buf[16],
-    unsigned int *num,
-    block128_f block
-  );
+  /*
+  typedef struct evp_md_st EVP_MD;
+
+  int EVP_Digest(const void *data, size_t count,
+                 unsigned char *md, unsigned int *size,
+                 const EVP_MD *type, ENGINE *impl);
+
+  const EVP_MD *EVP_sha256(void);
+  const EVP_MD *EVP_sha512(void);
+
+  unsigned char *HMAC(const EVP_MD *evp_md, const void *key, int key_len,
+                      const unsigned char *d, size_t n, unsigned char *md,
+                      unsigned int *md_len);
+  */
 ]]
+
+local function makeDigest(hashType, seed)
+  -- Setup the hash
+  -- local digestType
+  -- local digestSize
+  -- if hashType == 'SHA256' then
+  --   digestType = C.EVP_sha256()
+  --   digestSize = 32
+  -- elseif hashType == 'SHA512' then
+  --   digestType = C.EVP_sha512()
+  --   digestSize = 64
+  -- else
+  --   error('Unsupported encryption ciphertype: ' .. hashType)
+  -- end
+  return function(message)
+    -- dump('hashType', hashType)
+    -- dump('seed', seed)
+    -- dump('message', message)
+    return hmac.digest(hashType, message, seed, true)
+  end
+end
+
+local function makeEncrypt(cipherType, iv, key)
+  -- Create and initialise the context
+  local ctx = C.EVP_CIPHER_CTX_new()
+  assert(ctx ~= nil)
+
+  -- Setup the cipher
+  if cipherType == 'AES-128' then
+    assert(1 == C.EVP_EncryptInit_ex(ctx, C.EVP_aes_128_ctr(), nil, key, iv))
+  elseif cipherType == 'AES-256' then
+    assert(1 == C.EVP_EncryptInit_ex(ctx, C.EVP_aes_256_ctr(), nil, key, iv))
+  else
+    error('Unsupported encryption ciphertype: ' .. cipherType)
+  end
+
+  local alive = true
+
+  return function(plainText)
+    assert(alive)
+    if not plainText then
+      C.EVP_CIPHER_CTX_free(ctx)
+      alive = false
+      return
+    end
+
+    local plainLen = #plainText
+    local cipherText = newBuffer(plainLen)
+    local len = ffi.new 'int[1]'
+    assert(1 == C.EVP_EncryptUpdate(ctx, cipherText, len, plainText, plainLen))
+    return ffi.string(cipherText, len[0])
+  end
+end
+
+local function makeDecrypt(cipherType, iv, key)
+  -- Create and initialise the context
+  local ctx = C.EVP_CIPHER_CTX_new()
+  assert(ctx ~= nil)
+
+  -- Setup the cipher
+  if cipherType == 'AES-128' then
+    assert(1 == C.EVP_DecryptInit_ex(ctx, C.EVP_aes_128_ctr(), nil, key, iv))
+  elseif cipherType == 'AES-256' then
+    assert(1 == C.EVP_EncryptInit_ex(ctx, C.EVP_aes_256_ctr(), nil, key, iv))
+  else
+    error('Unsupported decryption ciphertype: ' .. cipherType)
+  end
+
+  local alive = true
+  return function(cipherText)
+    assert(alive)
+    if not cipherText then
+      C.EVP_CIPHER_CTX_free(ctx)
+      alive = false
+      return
+    end
+
+    local cipherLen = #cipherText
+    local plainText = newBuffer(cipherLen)
+    local len = ffi.new 'int[1]'
+    assert(1 == C.EVP_DecryptUpdate(ctx, plainText, len, cipherText, cipherLen))
+    return ffi.string(plainText, len[0])
+  end
+end
 
 -- [4 bytes len(therest)][ cipher(data) ][ H(cipher(data)) ]
 -- CTR mode AES
 local function wrapStream(stream, cipherType, hashType, k1, k2)
-
-  -- local mac1 = message => hmac.digest(hashType, message, k1.macKey)
-  -- local mac2 = message => hmac.digest(hashType, message, k2.macKey)
-  -- local cipher1 = aes.create()
-  -- local function writeChunk(chunk)
+  local encrypt = makeEncrypt(cipherType, k1.iv, k1.key)
+  local decrypt = makeDecrypt(cipherType, k2.iv, k2.key)
+  local mac1 = makeDigest(hashType, k1.macKey)
+  local mac2 = makeDigest(hashType, k2.macKey)
+  local hashSize = hashType == 'SHA256' and 32 or 64
 
   local function readNext()
     local frame = Msg.readFrame(stream)
-    dump('frame', frame)
+    if not frame then
+      return
+    end
+    local length = #frame
+    local cipher = frame:sub(1, length - hashSize)
+    local hash = frame:sub(length - hashSize + 1, length)
+    assert(mac2(cipher) == hash, 'digest mismatch')
+    local chunk = decrypt(cipher)
+    dump('reading', chunk)
+    return chunk
   end
 
-  local ivec = ffi.new('unsigned char[16]')
-  local ecountBuf = ffi.new('unsigned char[16]')
-  local num = ffi.new('unsigned int[1]')
-  local key = ffi.new('AES_KEY')
-
   local function writeChunk(chunk)
-    dump('to write', chunk)
-    local length = #chunk
-    local out = ffi.new('unsigned char[?]', length)
-    C.CRYPTO_ctr128_encrypt(chunk, out, length, k1.cipherKey, ivec, ecountBuf, num, C.AES_encrypt)
-    local hash = 'TODO:HASH'
-    Msg.writeFrame(ffi.string(out, length) .. hash)
+    dump('writing', chunk)
+    if not chunk then
+      stream.writeChunk()
+      return
+    end
+    local encrypted = encrypt(chunk)
+    local hash = mac1(encrypted)
+    Msg.writeFrame(stream, encrypted .. hash)
   end
 
   local readByte, readChunk = Connection.wrapRead(readNext)
@@ -233,7 +327,7 @@ local function wrapStream(stream, cipherType, hashType, k1, k2)
     readByte = readByte,
     readChunk = readChunk,
     writeChunk = writeChunk,
-    stream = stream
+    socket = stream.socket
   }
 end
 
@@ -336,7 +430,7 @@ function Secio.wrap(stream)
   }
 
   local verified = key2:verify(selectionInBytes, exchangeIn.signature)
-  dump('verified', verified)
+  dump('verified signature', verified)
   assert(verified, 'Signature verification failed in exchange')
 
   ----------------------------------------------------------------------------
@@ -359,12 +453,15 @@ function Secio.wrap(stream)
   -- step 2.3. MAC + Cipher -- prepare MAC + cipher
 
   stream = wrapStream(stream, cipher, hash, k1, k2)
-  dump('stream', stream)
 
   ----------------------------------------------------------------------------
   -- step 3. Finish -- send expected message to verify encryption works (send local nonce)
 
-  stream.writeChunk('Hello World\n')
+  -- stream.writeChunk(proposeIn.rand)
+  stream.writeChunk(proposeIn.rand)
+  local confirm = stream.readChunk(16)
+  dump('confirm', {confirm, proposeOut.rand})
+  assert(confirm == proposeOut.rand)
 
   -- TODO: exchange verification messages
 

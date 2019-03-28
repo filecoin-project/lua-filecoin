@@ -33,7 +33,12 @@ local function wrapRead(readNext)
   local function readChunk(length)
     local buffer = newBuffer(length)
     for i = 0, length - 1 do
-      buffer[i] = readByte()
+      local b = readByte()
+      if not b then
+        length = i
+        break
+      end
+      buffer[i] = b
     end
     return ffi.string(buffer, length)
   end
