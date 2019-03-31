@@ -11,9 +11,11 @@ return {
   homepage = "https://github.com/filecoin-project/lua-filecoin",
   dependencies = {
     "luvit/require",
+    "luvit/pretty-print",
   },
   files = {
     "**.lua",
+    "!unused*",
     "!test*"
   }
 }
