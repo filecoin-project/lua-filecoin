@@ -10,8 +10,8 @@ return {
   author = { name = "Tim Caswell", email = "tim.caswell@protocol.ai" },
   homepage = "https://github.com/filecoin-project/lua-filecoin",
   dependencies = {
-    "luvit/require",
     "luvit/pretty-print",
+    "creationix/uv",
   },
   files = {
     "**.lua",

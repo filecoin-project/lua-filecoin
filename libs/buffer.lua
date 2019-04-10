@@ -1,2 +1,1 @@
-local ffi = require 'ffi'
-return ffi.typeof('uint8_t[?]')
+return require'ffi'.typeof'uint8_t[?]'

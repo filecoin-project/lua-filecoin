@@ -12,7 +12,7 @@ local Exchange = require 'exchange'
 local Connection = require 'connection'
 
 local ffi = require 'ffi'
-local C = ffi.C
+local C = ffi.load'ssl'
 ffi.cdef [[
   typedef struct file_t FILE;
   FILE *fopen(const char *filename, const char *mode);

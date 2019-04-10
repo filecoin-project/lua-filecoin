@@ -8,7 +8,7 @@ Related reading:
 
 ]]
 local ffi = require 'ffi'
-local C = ffi.C
+local C = ffi.load "ssl"
 local newBuffer = require 'buffer'
 
 ffi.cdef [[
@@ -85,13 +85,13 @@ function Exchange.export(key)
   local buf = newBuffer(133)
   local size =
     C.EC_POINT_point2oct(
-    group,
-    point,
-    C.POINT_CONVERSION_UNCOMPRESSED,
-    buf,
-    ffi.sizeof(buf),
-    bn
-  )
+      group,
+      point,
+      C.POINT_CONVERSION_UNCOMPRESSED,
+      buf,
+      ffi.sizeof(buf),
+      bn
+    )
   return ffi.string(buf, size)
 end
 
