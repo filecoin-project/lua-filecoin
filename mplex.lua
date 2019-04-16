@@ -1,11 +1,6 @@
 local Varint = require 'varint'
 local Multiselect = require 'multiselect'
 local Connection = require 'connection'
-local bit = require 'bit'
-local bor = bit.bor
-local band = bit.band
-local lshift = bit.lshift
-local rshift = bit.rshift
 
 local NewStream = 0
 local MessageReceiver = 1
@@ -42,8 +37,8 @@ function Mplex.start(masterStream)
       if not head then
         break
       end
-      local id = rshift(head, 3)
-      local flag = band(head, 7)
+      local id = head >> 3
+      local flag = head & 7
       local frame = Varint.readFrame(masterStream)
       -- p(id, flag, frame)
       if flag == MessageReceiver then
@@ -63,7 +58,7 @@ function Mplex.start(masterStream)
     local stream = getStream(id)
 
     local function sendFrame(flag, body)
-      local head = bor(flag, lshift(id, 8))
+      local head = flag | id << 8
       masterStream.writeChunk(Varint.encode(head) .. Varint.encode(#body) .. body)
     end
 

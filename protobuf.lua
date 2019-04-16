@@ -1,8 +1,3 @@
-local bit = require 'bit'
-local bor = bit.bor
-local band = bit.band
-local lshift = bit.lshift
-local rshift = bit.rshift
 local sub = string.sub
 local Varint = require 'varint'
 
@@ -14,7 +9,7 @@ local function encodeValue(fieldNumber, val)
   end
   local typ = type(val)
   if typ == 'string' then
-    local key = bor(lshift(fieldNumber, 3), 2)
+    local key = 2 | fieldNumber << 3
     local len = #val
     return table.concat {
       Varint.encode(key),
@@ -22,7 +17,7 @@ local function encodeValue(fieldNumber, val)
       val
     }
   elseif typ == 'number' then
-    local key = bor(lshift(fieldNumber, 3), 0)
+    local key = fieldNumber << 3
     return table.concat {
       Varint.encode(key),
       Varint.encode(val)
@@ -33,8 +28,8 @@ end
 local function decodeValue(data, index)
   local key, len
   key, index = Varint.decode(data, index)
-  local fieldNumber = rshift(key, 3)
-  local typ = band(key, 7)
+  local fieldNumber = key >> 3
+  local typ = key & 7
   local val
   if typ == 0 then
     val, index = Varint.decode(data, index)

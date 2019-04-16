@@ -1,8 +1,3 @@
-local bit = require 'bit'
-local band = bit.band
-local bor = bit.bor
-local rshift = bit.rshift
-local lshift = bit.lshift
 local char = string.char
 local byte = string.byte
 
@@ -14,7 +9,7 @@ function Varint.decode(chunk, index)
   while true do
     local b = byte(chunk, index)
     index = index + 1
-    length = bor(length, lshift(band(b, 0x7f), bits))
+    length = length | (b & 0x7f) << bits
     if b < 0x80 then
       break
     end
@@ -26,8 +21,8 @@ end
 function Varint.encode(num)
   local parts = {}
   while num >= 0x80 do
-    parts[#parts + 1] = bor(band(num, 0x7f), 0x80)
-    num = rshift(num, 7)
+    parts[#parts + 1] = (num & 0x7f) | 0x80
+    num = num >> 7
   end
   parts[#parts + 1] = num
   return char(unpack(parts))
@@ -44,7 +39,7 @@ function Varint.read(stream)
     if not b then
       return
     end
-    length = bor(length, lshift(band(b, 0x7f), bits))
+    length = length | ((b & 0x7f) << bits)
     if b < 0x80 then
       break
     end

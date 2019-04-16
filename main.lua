@@ -1,13 +1,11 @@
-dofile 'luvit-loader.lua'
-local uv = require 'uv'
+local uv = require 'luv'
 local ssl = require 'openssl'
-local p = require('pretty-print').prettyPrint
-_G.p = p
 
 local Switch = require 'switch'
 local Multiselect = require 'multiselect'
 
 local function main()
+
 local mp = Switch.dial('localhost', 4001)
 print 'Connected!'
 p(mp.socket:getpeername())

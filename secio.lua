@@ -1,32 +1,30 @@
 local Protobuf = require 'protobuf'
 local Msg = require 'msgframe'
 local prettyPrint = require 'pretty-print'
-local newBuffer = require 'buffer'
 
 local ssl = require 'openssl'
 local pkey = ssl.pkey
 local digest = ssl.digest
 local hmac = ssl.hmac
-local Exchange = require 'exchange'
+--local Exchange = require 'exchange'
 
 local Connection = require 'connection'
 
-local ffi = require 'ffi'
-local C = ffi.load'ssl'
-ffi.cdef [[
-  typedef struct file_t FILE;
-  FILE *fopen(const char *filename, const char *mode);
-  int EC_KEY_print_fp(FILE *fp, const EC_KEY *key, int off);
-  int BIO_dump_fp(FILE *fp, const char *s, int len);
-  int	BIO_dump_indent_fp(FILE *fp, const char *s, int len, int indent);
+-- local C = ffi.load'ssl'
+-- ffi.cdef [[
+-- typedef struct file_t FILE;
+-- FILE *fopen(const char *filename, const char *mode);
+-- int EC_KEY_print_fp(FILE *fp, const EC_KEY *key, int off);
+-- int BIO_dump_fp(FILE *fp, const char *s, int len);
+-- int	BIO_dump_indent_fp(FILE *fp, const char *s, int len, int indent);
+--
+-- ]]
 
-]]
+--local stdout = ffi.C.fopen('/dev/stdout', 'w')
 
-local stdout = ffi.C.fopen('/dev/stdout', 'w')
-
-local function log(key)
-  C.EC_KEY_print_fp(stdout, key, 2)
-end
+--local function log(key)
+--  C.EC_KEY_print_fp(stdout, key, 2)
+--end
 
 local function dump(label, str, indent)
   indent = indent or 0
@@ -160,7 +158,7 @@ local function keyStretcher(cipherType, hashType, secret)
     key = result:sub(half + ivSize + 1, half + ivSize + keySize)
   }
 end
-
+--[[
 ffi.cdef [[
   typedef struct evp_cipher_st EVP_CIPHER;
   typedef struct evp_cipher_ctx_st EVP_CIPHER_CTX;
@@ -202,6 +200,7 @@ ffi.cdef [[
                       unsigned int *md_len);
   */
 ]]
+--]]
 
 local function makeDigest(hashType, seed)
   -- Setup the hash

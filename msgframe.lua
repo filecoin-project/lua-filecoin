@@ -1,8 +1,3 @@
-local bit = require 'bit'
-local bor = bit.bor
-local band = bit.band
-local lshift = bit.lshift
-local rshift = bit.rshift
 local byte = string.byte
 local char = string.char
 
@@ -11,20 +6,18 @@ local char = string.char
 local Msg = {}
 
 local function readUint32(data)
-  return bor(
-    lshift(byte(data, 1), 24),
-    lshift(byte(data, 2), 16),
-    lshift(byte(data, 3), 8),
-    byte(data, 4)
-  )
+  return (byte(data, 1) << 24)
+       | (byte(data, 2) << 16)
+       | (byte(data, 3) << 8)
+       |  byte(data, 4)
 end
 
 local function encodeUint32(length)
   return char(
-    band(0xff, rshift(length, 24)),
-    band(0xff, rshift(length, 16)),
-    band(0xff, rshift(length, 8)),
-    band(0xff, length)
+    (0xff & (length >> 24)),
+    (0xff & (length >> 16)),
+    (0xff & (length >> 8)),
+    (0xff & length)
   )
 end
 

@@ -1,6 +1,4 @@
 local byte = string.byte
-local ffi = require 'ffi'
-local newBuffer = require 'buffer'
 
 local Connection = {}
 
@@ -31,16 +29,15 @@ local function wrapRead(readNext)
   end
 
   local function readChunk(length)
-    local buffer = newBuffer(length)
-    for i = 0, length - 1 do
+    local buffer = {}
+    for i = 1, length do
       local b = readByte()
       if not b then
-        length = i
         break
       end
       buffer[i] = b
     end
-    return ffi.string(buffer, length)
+    return table.concat(buffer)
   end
 
   return readByte, readChunk
