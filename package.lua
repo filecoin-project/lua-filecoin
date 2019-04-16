@@ -12,6 +12,7 @@ return {
   dependencies = {
     "luvit/pretty-print",
     "creationix/uv",
+    "creationix/cbor",
   },
   files = {
     "**.lua",
