@@ -1,0 +1,5 @@
+builtin-type Integer
+
+type Boolean = True | False
+
+type Rational(Integer, Integer)

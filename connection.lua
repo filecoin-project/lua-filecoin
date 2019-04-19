@@ -1,4 +1,5 @@
 local byte = string.byte
+local char = string.char
 
 local Connection = {}
 
@@ -35,7 +36,7 @@ local function wrapRead(readNext)
       if not b then
         break
       end
-      buffer[i] = b
+      buffer[i] = char(b)
     end
     return table.concat(buffer)
   end

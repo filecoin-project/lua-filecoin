@@ -1,4 +1,4 @@
-local uv = require "uv"
+local uv = require "luv"
 local makeCallback = require "make-callback"
 
 local function normalize(options)

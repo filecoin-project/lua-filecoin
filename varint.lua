@@ -1,5 +1,6 @@
 local char = string.char
 local byte = string.byte
+local unpack = table.unpack
 
 local Varint = {}
 

@@ -1,4 +1,4 @@
-local connect = require 'socket'
+local connect = require 'uv-socket'
 local wrapStream = require 'stream-wrap'
 local Mplex = require 'mplex'
 local Multiselect = require 'multiselect'

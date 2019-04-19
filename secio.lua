@@ -2,11 +2,11 @@ local Protobuf = require 'protobuf'
 local Msg = require 'msgframe'
 local prettyPrint = require 'pretty-print'
 
-local ssl = require 'openssl'
-local pkey = ssl.pkey
-local digest = ssl.digest
-local hmac = ssl.hmac
---local Exchange = require 'exchange'
+local pkey = require 'openssl/pkey'
+local digest = require 'openssl/digest'
+local hmac = require 'openssl/hmac'
+local rand = require 'openssl/rand'
+local Exchange = require 'exchange'
 
 local Connection = require 'connection'
 
@@ -32,7 +32,7 @@ local function dump(label, str, indent)
   indent = indent + 2
   local typ = type(str)
   if typ == 'string' then
-    C.BIO_dump_indent_fp(stdout, str, #str, indent)
+    p(str)--C.BIO_dump_indent_fp(stdout, str, #str, indent)
   elseif typ == 'table' then
     for k, v in pairs(str) do
       dump(k, v, indent)
@@ -337,14 +337,14 @@ function Secio.wrap(stream)
   -- Generate and send Hello packet.
   -- Hello = (rand, PublicKey, Supported)
 
-  local key1 = pkey.new('rsa', 2048)
+  local key1 = pkey.new{ bits = 2048 }
   local proposeOut = {
-    rand = ssl.random(16),
+    rand = rand.bytes(16),
     pubkey = Protobuf.encodeTable(
       PublicKeySchema,
       {
         type = KeyEnum.RSA,
-        data = key1:get_public():export('der')
+        data = key1:tostring('der')
       }
     ),
     exchanges = SupportedExchanges,
@@ -364,15 +364,19 @@ function Secio.wrap(stream)
   -- step 1.1 Identify -- get identity from their key
   local skey = Protobuf.decodeTable(PublicKeySchema, proposeIn.pubkey)
   assert(skey.type == KeyEnum.RSA, 'Expected RSA key from server')
-  local key2 = assert(pkey.read(skey.data, false, 'der'))
+  local key2 = assert(pkey.new(skey.data, 'der'))
   -- TODO: do rest of get identity...
 
   ----------------------------------------------------------------------------
   -- step 1.2 Selection -- select/agree on best encryption parameters
 
   -- to determine order, use cmp(H(remote_pubkey||local_rand), H(local_pubkey||remote_rand)).
-  local oh1 = digest.digest('sha256', proposeIn.pubkey .. proposeOut.rand, true)
-  local oh2 = digest.digest('sha256', proposeOut.pubkey .. proposeIn.rand, true)
+  local oh1 = digest.new('sha256')
+    :update(proposeIn.pubkey)
+    :final(proposeOut.rand)
+  local oh2 = digest.new('sha256')
+    :update(proposeOut.pubkey)
+    :final(proposeIn.rand)
   assert(oh1 ~= oh2) -- talking to self (same socket. must be reuseport + dialing self)
   local order = oh1 > oh2 and 1 or -1
 
