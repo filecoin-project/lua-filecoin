@@ -13,16 +13,24 @@ local b64 = baseX "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012345678
 local b66 = baseX "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.!~"
 local b94 = baseX '!"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~'
 
-local msg = "Hello world, let's compute some bases"
-p('b2', b2.encode(msg))
-p('b8', b8.encode(msg))
-p('b11', b11.encode(msg))
-p('b16', b16.encode(msg))
-p('b32', b32.encode(msg))
-p('zb32', zb32.encode(msg))
-p('b36', b36.encode(msg))
-p('b58', b58.encode(msg))
-p('b62', b62.encode(msg))
-p('b64', b64.encode(msg))
-p('b66', b66.encode(msg))
-p('b94', b94.encode(msg))
+local function test(name, base)
+  print("Testing " .. name)
+  local msg = "Hello world, let's compute some bases"
+  local encoded = base.encode(msg)
+  print(encoded)
+  local decoded = base.decode(encoded)
+  assert(msg == decoded, "roundtrip failed")
+end
+
+test('b2', b2)
+test('b8', b8)
+test('b11', b11)
+test('b16', b16)
+test('b32', b32)
+test('zb32', zb32)
+test('b36', b36)
+test('b58', b58)
+test('b62', b62)
+test('b64', b64)
+test('b66', b66)
+test('b94', b94)

@@ -77,81 +77,71 @@ return function (alphabet)
     return table.concat(str)
   end
 
-  -- function decodeUnsafe (source) {
-  --   if (typeof source !== 'string') throw new TypeError('Expected String')
-  --   if (source.length === 0) return Buffer.alloc(0)
+  local function decode(source)
+    -- Validate and convert the source
+    assert(type(source) == 'string', 'Expected string alphabet')
+    local sourceLength = #source
+    if sourceLength == 0 then return "" end
+    source = u8Array(sourceLength, source)
 
-  --   let psz = 0
+    local psz = 0
 
-  --   // Skip leading spaces.
-  --   if (source[psz] === ' ') return
+    -- Skip and count leading '1's.
+    local zeroes = 0
+    local length = 0
+    while source[psz] == leader do
+      zeroes = zeroes + 1
+      psz = psz + 1
+    end
 
-  --   // Skip and count leading '1's.
-  --   let zeroes = 0
-  --   let length = 0
-  --   while (source[psz] === LEADER) {
-  --     zeroes++
-  --     psz++
-  --   }
+    -- Allocate enough space in big-endian base256 representation.
+    local size = bit.tobit(((sourceLength - psz) * factor) + 1) 
+    local b256 = u8Array(size)
 
-  --   // Allocate enough space in big-endian base256 representation.
-  --   const size = (((source.length - psz) * FACTOR) + 1) >>> 0 // log(58) / log(256), rounded up.
-  --   const b256 = new Uint8Array(size)
+    -- Process the characters.
+    while source[psz] > 0 do
+      -- Decode character
+      local carry = baseMap[source[psz]]
 
-  --   // Process the characters.
-  --   while (source[psz]) {
-  --     // Decode character
-  --     let carry = BASE_MAP[source.charCodeAt(psz)]
+      assert(carry < 255, "Invalid Character")
 
-  --     // Invalid character
-  --     if (carry === 255) return
+      local i = 0
+      local it = size - 1
+      while (carry ~= 0 or i < length) and it ~= -1 do
+        carry = carry + (base * b256[it])
+        b256[it] = (carry % 256)
+        carry = bit.rshift(carry, 8)
+        it = it - 1
+        i = i + 1
+      end
 
-  --     let i = 0
-  --     for (let it = size - 1; (carry !== 0 || i < length) && (it !== -1); it--, i++) {
-  --       carry += (BASE * b256[it]) >>> 0
-  --       b256[it] = (carry % 256) >>> 0
-  --       carry = (carry / 256) >>> 0
-  --     }
+      assert(carry == 0, "Non-zero carry")
+      length = i
+      psz = psz + 1
+    end
 
-  --     if (carry !== 0) throw new Error('Non-zero carry')
-  --     length = i
-  --     psz++
-  --   }
+    -- Skip leading zeroes in b256.
+    local it = size - length
+    while it ~= size and b256[it] == 0 do
+      it = it + 1
+    end
 
-  --   // Skip trailing spaces.
-  --   if (source[psz] === ' ') return
+    local vch = u8Array(zeroes + (size - it))
 
-  --   // Skip leading zeroes in b256.
-  --   let it = size - length
-  --   while (it !== size && b256[it] === 0) {
-  --     it++
-  --   }
+    local j = zeroes
+    -- TODO: optimize with ffi memcopy
+    while it ~= size do
+      vch[j] = b256[it]
+      j = j + 1
+      it = it + 1
+    end
 
-  --   const vch = Buffer.allocUnsafe(zeroes + (size - it))
-  --   vch.fill(0x00, 0, zeroes)
+    return ffi.string(vch, j)
+  end
 
-  --   let j = zeroes
-  --   while (it !== size) {
-  --     vch[j++] = b256[it++]
-  --   }
-
-  --   return vch
-  -- }
-
-  -- function decode (string) {
-  --   const buffer = decodeUnsafe(string)
-  --   if (buffer) return buffer
-
-  --   throw new Error('Non-base' + BASE + ' character')
-  -- }
-
-  -- return {
-  --   encode: encode,
-  --   decodeUnsafe: decodeUnsafe,
-  --   decode: decode
-  -- }
   return {
     encode = encode,
+    decode = decode,
   }
 end
 
