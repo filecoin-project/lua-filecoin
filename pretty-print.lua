@@ -271,7 +271,7 @@ function prettyPrint(...)
   for i = 1, n do
     arguments[i] = dump(arguments[i])
   end
-  print(table.unpack(arguments))
+  print(unpack(arguments))
 end
 
 width = 80
@@ -290,7 +290,6 @@ _G.p = prettyPrint
 return {
   loadColors = loadColors,
   theme = theme,
-  print = print,
   prettyPrint = prettyPrint,
   dump = dump,
   color = color,

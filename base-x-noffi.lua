@@ -1,59 +1,56 @@
-local ffi = require 'ffi'
-local u8Array = ffi.typeof 'uint8_t[?]'
+local char = string.char
+local byte = string.byte
+local sub = string.sub
 
 return function (alphabet)
   -- Validate and convert the alphabet
   assert(type(alphabet) == 'string', 'Expected string alphabet')
   local base = #alphabet
   assert(base > 1, 'Alphabet too short')
-  assert(base < 255, 'Alphabet too long')
-  alphabet = u8Array(base, alphabet)
+  assert(base <= 256, 'Alphabet too long')
 
   -- Create an inverse map for the base
-  local baseMap = u8Array(256)
-  for i = 0, 255 do baseMap[i] = 255 end
-  for i = 0, base - 1 do
-    local xc = alphabet[i]
-    if baseMap[xc] ~= 255 then error(string.char(xc) .. ' is ambiguous') end
+  local baseMap = {}
+  for i = 1, base do
+    local xc = byte(alphabet, i)
+    if baseMap[xc] then error(char(xc) .. ' is ambiguous') end
     baseMap[xc] = i
   end
 
-  local leader = alphabet[0]
+  local leader = alphabet:sub(1,1)
   local factor = math.log(base) / math.log(256)
   local ifactor = math.log(256) / math.log(base)
 
   local function encode (source)
-    p(source)
     -- Validate and convert input string
     assert(type(source) == 'string', "Expected string")
     local sourceLength = #source
     if sourceLength == 0 then return '' end
-    source = u8Array(sourceLength, source)
 
     -- Skip & count leading zeroes.
     local zeroes = 0
     local length = 0
-    local pbegin = 0
+    local pbegin = 1
     local pend = sourceLength
-    while pbegin < pend and source[pbegin] == 0 do
+    while pbegin <= pend and byte(source, pbegin) == 0 do
       pbegin = pbegin + 1
       zeroes = zeroes + 1
     end
-    p("zeroes", zeroes)
 
-    -- Allocate enough space in big-endian base58 representation.
-    local size = bit.tobit(((pend - pbegin) * ifactor + 1))
-    local b58 = u8Array(size)
+    local b58 = {}
 
     -- Process the bytes.
-    while pbegin < pend do
-      local carry = source[pbegin]
+    while pbegin <= pend do
+      local carry = byte(source, pbegin)
+      p("CARRY", carry)
 
       -- Apply "b58 = b58 * 256 + ch".
       local i = 0
-      local it = size - 1
-      while (carry > 0 or i < length) and it >= 0 do
-        carry = carry + 256 * b58[it]
+      local it = 0
+
+      while carry > 0 or i < length do
+        p(b58)
+        carry = carry + 256 * (b58[it] or 0)
         b58[it] = carry % base
         carry = (carry - b58[it]) / base
         it = it - 1
@@ -65,15 +62,16 @@ return function (alphabet)
     end
 
     -- Skip leading zeroes in base58 result.
-    local it = size - length
-    while it ~= size and b58[it] == 0 do
+    local it = length
+    while b58[it] and b58[it] == 0 do
       it = it + 1
     end
 
     -- Translate the result into a string.
-    local str = {string.rep(string.char(leader), zeroes) }
+    local str = { string.rep(leader, zeroes) }
     while it < size do
-      str[#str + 1] = string.char(alphabet[b58[it]])
+      local i = b58[it] or 0
+      str[#str + 1] = sub(alphabet, i, i)
       it = it + 1
     end
     return table.concat(str)
