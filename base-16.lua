@@ -10,9 +10,10 @@ return function (alphabet)
   assert(#alphabet == 16)
   local map = {}
   for i = 0, 255 do
-    local a = band(rshift(i, 4), 15) + 1
-    local b = band(i, 15) + 1
-    local chunk = sub(alphabet, a, a) .. sub(alphabet, b, b)
+    local chunk = char(
+      byte(alphabet, band(rshift(i, 4), 15) + 1),
+      byte(alphabet, band(i, 15) + 1)
+    )
     map[i] = chunk
     map[chunk] = i
   end
