@@ -16,7 +16,7 @@ end
 local table = {
   {'identity',         '\0', identity, ''},
   {'base2',             '0', base2,  '01'},
-  {'base8',             '7', base8,  '01234567='},
+  {'base8',             '7', base8,  '01234567'},
   {'base10',            '9', baseX,  '0123456789'},
   {'base16',            'f', base16, '0123456789abcdef'},
   {'base16upper',       'F', base16, '0123456789ABCDEF'},

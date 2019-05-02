@@ -125,7 +125,9 @@ for _, list in ipairs(messages) do
   collectgarbage()
   if type(list) == 'string' then
     message = list
-    p("Message", message)
+    print("\nMessage:")
+    p(message)
+    print()
   else
     collectgarbage()
     for _, input in ipairs(list) do
@@ -141,7 +143,7 @@ for _, list in ipairs(messages) do
       if encoded ~= input then
         print("Expected: " .. input)
         print("But got:  " .. encoded)
-        -- assert(encoded == input)
+        assert(encoded == input)
       end
       collectgarbage()
       print("Decoding " .. code)
