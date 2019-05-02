@@ -98,36 +98,3 @@ return function (alphabet)
     decode = decode,
   }
 end
-
---[[lit-meta
-  name = "creationix/base64"
-  description = "A pure lua implemention of base64 using bitop"
-  tags = {"crypto", "base64", "bitop"}
-  version = "2.0.0"
-  license = "MIT"
-  author = { name = "Tim Caswell" }
-]]
-
--- local codes = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/='
-
-
--- assert(base64Encode("") == "")
--- assert(base64Encode("f") == "Zg==")
--- assert(base64Encode("fo") == "Zm8=")
--- assert(base64Encode("foo") == "Zm9v")
--- assert(base64Encode("foob") == "Zm9vYg==")
--- assert(base64Encode("fooba") == "Zm9vYmE=")
--- assert(base64Encode("foobar") == "Zm9vYmFy")
-
--- assert(base64Decode("") == "")
--- assert(base64Decode("Zg==") == "f")
--- assert(base64Decode("Zm8=") == "fo")
--- assert(base64Decode("Zm9v") == "foo")
--- assert(base64Decode("Zm9vYg==") == "foob")
--- assert(base64Decode("Zm9vYmE=") == "fooba")
--- assert(base64Decode("Zm9vYmFy") == "foobar")
-
--- return {
---   encode = base64Encode,
---   decode = base64Decode,
--- }
