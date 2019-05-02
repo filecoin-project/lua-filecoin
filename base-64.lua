@@ -10,7 +10,6 @@ local sub = string.sub
 local concat = table.concat
 
 return function (alphabet)
-
   -- Reverse map from character code to 6-bit integer
   local map = {}
   for i = 1, 64 do
@@ -22,8 +21,8 @@ return function (alphabet)
   -- a,b,c are 3 x 8-bit numbers
   -- they are encoded into groups of 4 x 6-bit numbers
   -- aaaaaa aabbbb bbbbcc cccccc
-  -- if there is no c, then pad the 4th with =
-  -- if there is also no b then pad the 3rd with =
+  -- if there is no c, then pad the 4th
+  -- if there is also no b, then pad the 3rd
   local function encode(str)
     local parts = {}
     local j = 1

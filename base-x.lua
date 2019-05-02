@@ -1,5 +1,7 @@
 local ffi = require 'ffi'
 local u8Array = ffi.typeof 'uint8_t[?]'
+local byte = string.byte
+local sub = string.sub
 
 return function (alphabet)
   -- Validate and convert the alphabet
@@ -7,39 +9,35 @@ return function (alphabet)
   local base = #alphabet
   assert(base > 1, 'Alphabet too short')
   assert(base < 255, 'Alphabet too long')
-  alphabet = u8Array(base, alphabet)
 
   -- Create an inverse map for the base
   local baseMap = u8Array(256)
   for i = 0, 255 do baseMap[i] = 255 end
-  for i = 0, base - 1 do
-    local xc = alphabet[i]
+  for i = 1, base do
+    local xc = byte(alphabet, i)
     if baseMap[xc] ~= 255 then error(string.char(xc) .. ' is ambiguous') end
-    baseMap[xc] = i
+    baseMap[xc] = i - 1
   end
 
-  local leader = alphabet[0]
+  local leader = byte(alphabet, 1)
   local factor = math.log(base) / math.log(256)
   local ifactor = math.log(256) / math.log(base)
 
   local function encode (source)
-    p(source)
-    -- Validate and convert input string
+    -- Validate input string
     assert(type(source) == 'string', "Expected string")
     local sourceLength = #source
     if sourceLength == 0 then return '' end
-    source = u8Array(sourceLength, source)
 
     -- Skip & count leading zeroes.
     local zeroes = 0
     local length = 0
     local pbegin = 0
     local pend = sourceLength
-    while pbegin < pend and source[pbegin] == 0 do
+    while pbegin < pend and byte(source, pbegin + 1) == 0 do
       pbegin = pbegin + 1
       zeroes = zeroes + 1
     end
-    p("zeroes", zeroes)
 
     -- Allocate enough space in big-endian base58 representation.
     local size = bit.tobit(((pend - pbegin) * ifactor + 1))
@@ -47,7 +45,7 @@ return function (alphabet)
 
     -- Process the bytes.
     while pbegin < pend do
-      local carry = source[pbegin]
+      local carry = byte(source, pbegin + 1)
 
       -- Apply "b58 = b58 * 256 + ch".
       local i = 0
@@ -73,25 +71,25 @@ return function (alphabet)
     -- Translate the result into a string.
     local str = {string.rep(string.char(leader), zeroes) }
     while it < size do
-      str[#str + 1] = string.char(alphabet[b58[it]])
+      local idx = b58[it] + 1
+      str[#str + 1] = sub(alphabet, idx, idx)
       it = it + 1
     end
     return table.concat(str)
   end
 
   local function decode(source)
-    -- Validate and convert the source
+    -- Validate the source
     assert(type(source) == 'string', 'Expected string alphabet')
     local sourceLength = #source
     if sourceLength == 0 then return "" end
-    source = u8Array(sourceLength, source)
 
     local psz = 0
 
     -- Skip and count leading '1's.
     local zeroes = 0
     local length = 0
-    while source[psz] == leader do
+    while byte(source, psz + 1) == leader do
       zeroes = zeroes + 1
       psz = psz + 1
     end
@@ -101,9 +99,9 @@ return function (alphabet)
     local b256 = u8Array(size)
 
     -- Process the characters.
-    while source[psz] > 0 do
+    while byte(source, psz + 1) or 0 > 0 do
       -- Decode character
-      local carry = baseMap[source[psz]]
+      local carry = baseMap[byte(source, psz + 1)]
 
       assert(carry < 255, "Invalid Character")
 
