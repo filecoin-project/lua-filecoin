@@ -1,4 +1,3 @@
-local u8Array = require 'u8-array'
 local bit = require 'bit'
 local rshift = bit.rshift
 local lshift = bit.lshift
@@ -6,8 +5,6 @@ local bor = bit.bor
 local band = bit.band
 local char = string.char
 local byte = string.byte
-local sub = string.sub
-local find = string.find
 local concat = table.concat
 
 return function (alphabet)
@@ -16,7 +13,6 @@ return function (alphabet)
   for i = 1, 32 do
     map[byte(alphabet, i)] = i - 1
   end
-  local pad = byte(alphabet, 33) or 0
 
   -- Loop over input 5 bytes at a time
   -- a, b, c, d, e are 5 x 8-bit numbers
@@ -28,43 +24,48 @@ return function (alphabet)
     local j = 1
     for i = 1, #str, 5 do
       local a, b, c, d, e = byte(str, i, i + 4)
-      local part = char(
-        -- aaaaa
-        byte(alphabet, rshift(a, 3) + 1),
-        -- aaabb
-        byte(alphabet, bor(
-          lshift(band(a, 7), 2),
-          b and rshift(b, 6) or 0
-        ) + 1),
+      local points = {}
+      -- aaaaa
+      points[1] = rshift(a, 3)
+      -- aaabb
+      points[2] = bor(
+        lshift(band(a, 7), 2),
+        b and rshift(b, 6) or 0
+      )
+      if b then
         -- bbbbb
-        b and byte(alphabet,
-          band(rshift(b, 1), 31) + 1) or pad,
+        points[3] = band(rshift(b, 1), 31)
         -- bcccc
-        b and byte(alphabet, bor(
+        points[4] = bor(
           lshift(band(b, 1), 4),
           c and rshift(c, 4) or 0
-        ) + 1) or pad,
-        -- ccccd
-        c and byte(alphabet, bor(
-          lshift(band(c, 15), 1),
-          d and rshift(d, 7) or 0
-        ) + 1) or pad,
-        -- ddddd
-        d and byte(alphabet,
-          band(rshift(d, 2), 31) + 1) or pad,
-        -- ddeee
-        d and byte(alphabet, bor(
-          lshift(band(d, 3), 3),
-          e and rshift(e, 5) or 0
-        ) + 1) or pad,
-        -- eeeee
-        e and byte(alphabet,
-          band(e, 31) + 1) or pad
-      )
-      -- trim trailing null bytes
-      local i = find(part, '\0')
-      if i then part = sub(part, 1, i - 1) end
-      parts[j] = part
+        )
+        if c then
+          -- ccccd
+          points[5] = bor(
+            lshift(band(c, 15), 1),
+            d and rshift(d, 7) or 0
+          )
+          if d then
+            -- ddddd
+            points[6] = band(rshift(d, 2), 31)
+            -- ddeee
+            points[7] = bor(
+              lshift(band(d, 3), 3),
+              e and rshift(e, 5) or 0
+            )
+            if e then
+              -- eeeee
+              points[8] = band(e, 31)
+            end
+          end
+        end
+      end
+      local chars = {}
+      for k = 1, 8 do
+        chars[k] = byte(alphabet, (points[k] or 32) + 1)
+      end
+      parts[j] = char(unpack(chars))
       j = j + 1
     end
     return concat(parts)
@@ -79,46 +80,53 @@ return function (alphabet)
     local j = 1
     for i = 1, #data, 8 do
       local a, b, c, d, e, f, g, h = byte(data, i, i + 7)
-      a = map[a]
+      local chars = {}
       b = map[b]
-      c = map[c]
-      d = map[d]
-      e = map[e]
-      f = map[f]
-      g = map[g]
-      h = map[h]
-      local part = char(
+      if b then
+        a = map[a]
         -- aaaaabbb
-        bor(
+        chars[1] = bor(
           lshift(a, 3),
-          b and rshift(b, 2) or 0
-        ),
-        -- bbcccccd
-        b and bor(
-          lshift(band(b, 3), 6),
-          c and lshift(c, 1) or 0,
-          d and rshift(d, 4) or 0
-        ) or 0,
-        -- ddddeeee
-        d and bor(
-          lshift(band(d, 15), 4),
-          e and rshift(e, 1) or 0
-        ) or 0,
-        -- efffffgg
-        e and bor(
-          lshift(band(e, 1), 7),
-          f and lshift(f, 2) or 0,
-          g and rshift(g, 3) or 0
-        ) or 0,
-        -- ggghhhhh
-        g and bor(
-          lshift(band(g, 7), 5),
-          h or 0
-        ) or 0
-      )
-      local used = rshift(#{a, b, c, d, e, f, g, h} * 5, 3)
-      if used < 5 then part = sub(part, 1, used) end
-      parts[j] = part
+          rshift(b, 2)
+        )
+        d = map[d]
+        if d then
+          c = map[c]
+          -- bbcccccd
+          chars[2] = bor(
+            lshift(band(b, 3), 6),
+            lshift(c, 1),
+            rshift(d, 4)
+          )
+          e = map[e]
+          if e then
+            -- ddddeeee
+            chars[3] = bor(
+              lshift(band(d, 15), 4),
+              rshift(e, 1)
+            )
+            g = map[g]
+            if g then
+              f = map[f]
+              -- efffffgg
+              chars[4] = bor(
+                lshift(band(e, 1), 7),
+                lshift(f, 2),
+                rshift(g, 3)
+              )
+              h = map[h]
+              if h then
+                -- ggghhhhh
+                chars[5] = bor(
+                  lshift(band(g, 7), 5),
+                  h
+                )
+              end
+            end
+          end
+        end
+      end
+      parts[j] = char(unpack(chars))
       j = j + 1
     end
     return concat(parts)

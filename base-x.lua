@@ -95,7 +95,7 @@ return function (alphabet)
     end
 
     -- Allocate enough space in big-endian base256 representation.
-    local size = bit.tobit(((sourceLength - psz) * factor) + 1) 
+    local size = bit.tobit(((sourceLength - psz) * factor) + 1)
     local b256 = u8Array(size)
 
     -- Process the characters.

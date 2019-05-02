@@ -1,5 +1,6 @@
 local baseX = require 'base-x'
 local base2 = require 'base-2'
+local base8 = require 'base-8'
 local base16 = require 'base-16'
 local base32 = require 'base-32'
 local base64 = require 'base-64'
@@ -15,7 +16,7 @@ end
 local table = {
   {'identity',         '\0', identity, ''},
   {'base2',             '0', base2,  '01'},
-  {'base8',             '7', baseX,  '01234567'},
+  {'base8',             '7', base8,  '01234567='},
   {'base10',            '9', baseX,  '0123456789'},
   {'base16',            'f', base16, '0123456789abcdef'},
   {'base16upper',       'F', base16, '0123456789ABCDEF'},
@@ -48,12 +49,12 @@ for i = 1, #table do
   names[name] = name
   names[code] = name
 end
-p(bases)
+
 local function encode(nameOrCode, raw)
   collectgarbage()
   local base = assert(bases[nameOrCode], "Unknown name or code")
   collectgarbage()
-  if type(base[1]) == 'function' then 
+  if type(base[1]) == 'function' then
     collectgarbage()
     base = base[1](base[2])
     collectgarbage()

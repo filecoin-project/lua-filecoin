@@ -19,7 +19,7 @@ return function (alphabet)
     local chunk = concat(parts)
     map[i] = chunk
     map[chunk] = i
-  end 
+  end
 
   local function encode(message)
     local parts = {}

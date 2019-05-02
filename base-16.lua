@@ -12,10 +12,10 @@ return function (alphabet)
   for i = 0, 255 do
     local a = band(rshift(i, 4), 15) + 1
     local b = band(i, 15) + 1
-    chunk = sub(alphabet, a, a) .. sub(alphabet, b, b)
+    local chunk = sub(alphabet, a, a) .. sub(alphabet, b, b)
     map[i] = chunk
     map[chunk] = i
-  end 
+  end
 
   local function encode(message)
     local parts = {}

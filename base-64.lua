@@ -1,4 +1,3 @@
-local u8Array = require 'u8-array'
 local bit = require 'bit'
 local rshift = bit.rshift
 local lshift = bit.lshift
@@ -45,8 +44,8 @@ return function (alphabet)
         c and byte(alphabet, band(c, 63) + 1) or pad
       )
       if sub(part, 3, 4) == '\0\0' then
-        part = sub(part, 1, 2) 
-      elseif sub(part, 4, 4) == '\0' then 
+        part = sub(part, 1, 2)
+      elseif sub(part, 4, 4) == '\0' then
         part = sub(part, 1, 3)
       end
       parts[j] = part
