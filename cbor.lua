@@ -47,6 +47,10 @@ local defaultTag = {
   end
 }
 
+local function makeTag(tag, val)
+  return setmetatable(defaultTag.decode(val, tag), defaultTag)
+end
+
 local encoders = {}
 local function encode(obj)
   local tag = tags[getmetatable(obj)]
@@ -294,6 +298,7 @@ return {
   buf = buf,
   bin = bin,
   registerTag = registerTag,
+  makeTag = makeTag,
   encode = encode,
   decode = decode,
 }

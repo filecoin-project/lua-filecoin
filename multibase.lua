@@ -1,9 +1,3 @@
-local baseX = require 'base-x'
-local base2 = require 'base-2'
-local base8 = require 'base-8'
-local base16 = require 'base-16'
-local base32 = require 'base-32'
-local base64 = require 'base-64'
 
 local function identity()
   local function passthrough(message) return message end
@@ -15,26 +9,26 @@ end
 
 local table = {
   {'identity',         '\0', identity, ''},
-  {'base2',             '0', base2,  '01'},
-  {'base8',             '7', base8,  '01234567'},
-  {'base10',            '9', baseX,  '0123456789'},
-  {'base16',            'f', base16, '0123456789abcdef'},
-  {'base16upper',       'F', base16, '0123456789ABCDEF'},
-  {'base32',            'b', base32, 'abcdefghijklmnopqrstuvwxyz234567'},
-  {'base32upper',       'B', base32, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'},
-  {'base32pad',         'c', base32, 'abcdefghijklmnopqrstuvwxyz234567='},
-  {'base32padupper',    'C', base32, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567='},
-  {'base32hex',         'v', base32, '0123456789abcdefghijklmnopqrstuv'},
-  {'base32hexupper',    'V', base32, '0123456789ABCDEFGHIJKLMNOPQRSTUV'},
-  {'base32hexpad',      't', base32, '0123456789abcdefghijklmnopqrstuv='},
-  {'base32hexpadupper', 'T', base32, '0123456789ABCDEFGHIJKLMNOPQRSTUV='},
-  {'base32z',           'h', base32, 'ybndrfg8ejkmcpqxot1uwisza345h769'},
-  {'base58flickr',      'Z', baseX,  '123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ'},
-  {'base58btc',         'z', baseX,  '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'},
-  {'base64',            'm', base64, 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'},
-  {'base64pad',         'M', base64, 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/='},
-  {'base64url',         'u', base64, 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_'},
-  {'base64urlpad',      'U', base64, 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_='},
+  {'base2',             '0', "base-2",  '01'},
+  {'base8',             '7', "base-8",  '01234567'},
+  {'base10',            '9', "base-x",  '0123456789'},
+  {'base16',            'f', "base-16", '0123456789abcdef'},
+  {'base16upper',       'F', "base-16", '0123456789ABCDEF'},
+  {'base32',            'b', "base-32", 'abcdefghijklmnopqrstuvwxyz234567'},
+  {'base32upper',       'B', "base-32", 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'},
+  {'base32pad',         'c', "base-32", 'abcdefghijklmnopqrstuvwxyz234567='},
+  {'base32padupper',    'C', "base-32", 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567='},
+  {'base32hex',         'v', "base-32", '0123456789abcdefghijklmnopqrstuv'},
+  {'base32hexupper',    'V', "base-32", '0123456789ABCDEFGHIJKLMNOPQRSTUV'},
+  {'base32hexpad',      't', "base-32", '0123456789abcdefghijklmnopqrstuv='},
+  {'base32hexpadupper', 'T', "base-32", '0123456789ABCDEFGHIJKLMNOPQRSTUV='},
+  {'base32z',           'h', "base-32", 'ybndrfg8ejkmcpqxot1uwisza345h769'},
+  {'base58flickr',      'Z', "base-x",  '123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ'},
+  {'base58btc',         'z', "base-x",  '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'},
+  {'base64',            'm', "base-64", 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'},
+  {'base64pad',         'M', "base-64", 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/='},
+  {'base64url',         'u', "base-64", 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_'},
+  {'base64urlpad',      'U', "base-64", 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_='},
 }
 
 local bases = {}
@@ -54,6 +48,9 @@ local function encode(nameOrCode, raw)
   collectgarbage()
   local base = assert(bases[nameOrCode], "Unknown name or code")
   collectgarbage()
+  if type(base[1]) == 'string' then
+    base[1] = require(base[1])
+  end
   if type(base[1]) == 'function' then
     collectgarbage()
     base = base[1](base[2])
