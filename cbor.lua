@@ -36,22 +36,26 @@ local tagMeta = {
 }
 
 local function makeTag(tag, value)
+  assert(type(tag) == "number")
   return setmetatable({tag=tag,value=value},tagMeta)
 end
 
-local function isTag(value)
-  return getmetatable(value) == tagMeta
-end
-
 local function getTag(value)
-  assert(isTag(value), "Not a tag")
-  return value.tag, value.value
+  if getmetatable(value) == tagMeta then
+    return value.tag, value.value
+  else
+    return nil, "Not a tag"
+  end
 end
 
 local encoders = {}
 local function encode(obj)
-  if isTag(obj) then return encoders.tag(getTag(obj)) end
-  return encoders[type(obj)](obj)
+  local tag, value = getTag(obj)
+  if tag then
+    return encoders.tag(tag, value)
+  else
+    return encoders[type(obj)](obj)
+  end
 end
 
 local function encode_integer(major, num)
