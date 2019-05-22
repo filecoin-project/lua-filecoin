@@ -29,33 +29,29 @@ local function bin(str)
   return buf(#str, str)
 end
 
-local tagMeta = {
+local tags = {}
+local function registerTag(num, meta)
+  tags[num] = meta
+  tags[meta] = num
+end
+
+local defaultTag = {
   __tostring = function (self)
-    return string.format("((%d: %s))", self.tag, self.value)
+    return string.format("%d(%s)", self.tag, self[1])
+  end,
+  encode = function (obj)
+    return obj[1]
+  end,
+  decode = function (val, tag)
+    return { val, tag = tag }
   end
 }
 
-local function makeTag(tag, value)
-  assert(type(tag) == "number")
-  return setmetatable({tag=tag,value=value},tagMeta)
-end
-
-local function getTag(value)
-  if getmetatable(value) == tagMeta then
-    return value.tag, value.value
-  else
-    return nil, "Not a tag"
-  end
-end
-
 local encoders = {}
 local function encode(obj)
-  local tag, value = getTag(obj)
-  if tag then
-    return encoders.tag(tag, value)
-  else
-    return encoders[type(obj)](obj)
-  end
+  local tag = tags[getmetatable(obj)]
+  if tag then return encoders.tag(tag, obj) end
+  return encoders[type(obj)](obj)
 end
 
 local function encode_integer(major, num)
@@ -97,6 +93,8 @@ local function encode_integer(major, num)
 end
 
 encoders.tag = function (tag, value)
+  local meta = tags[tag] or defaultTag
+  value = (meta.encode or defaultTag.encode)(value)
   return encode_integer(0xc0, tag) .. encode(value)
 end
 
@@ -274,7 +272,9 @@ decoders[6] = function (minor, chunk, index)
   local value, tag
   tag, index = major0(minor, chunk, index)
   value, index = decode(chunk, index)
-  return makeTag(tag, value), index
+  local meta = tags[tag] or defaultTag
+  value = (meta.decode or defaultTag.decode)(value, tag)
+  return setmetatable(value, meta), index
 end
 
 decoders[7] = function (minor, _, index)
@@ -293,9 +293,7 @@ return {
   u64 = u64,
   buf = buf,
   bin = bin,
-  makeTag = makeTag,
-  isTag = isTag,
-  getTag = getTag,
+  registerTag = registerTag,
   encode = encode,
   decode = decode,
 }
