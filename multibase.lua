@@ -45,31 +45,21 @@ for i = 1, #table do
 end
 
 local function encode(nameOrCode, raw)
-  collectgarbage()
   local base = assert(bases[nameOrCode], "Unknown name or code")
-  collectgarbage()
   if type(base[1]) == 'string' then
     base[1] = require(base[1])
   end
   if type(base[1]) == 'function' then
-    collectgarbage()
     base = base[1](base[2])
-    collectgarbage()
     bases[nameOrCode] = base
-    collectgarbage()
   end
-  collectgarbage()
   local code = codes[nameOrCode]
-  collectgarbage()
   return code .. base.encode(raw), names[code]
 end
 
 local function decode(encoded)
-  collectgarbage()
   local code = encoded:sub(1, 1)
-  collectgarbage()
   local base = assert(bases[code], "Unknown code in prefix")
-  collectgarbage()
   return base.decode(encoded:sub(2)), names[code]
 end
 
