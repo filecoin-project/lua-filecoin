@@ -15,8 +15,12 @@ local function sha1()
   end
 end
 
-local function sha2(size)
-  error("TODO: Implement sha2-" .. size)
+local function sha256()
+  return require('sha256')[256]
+end
+
+local function sha512()
+  error("TODO: Implement sha512")
 end
 
 local function sha3(size)
@@ -42,25 +46,24 @@ end
 local table = {
   {'identity',         0, identity},
   {'sha1',          0x11, sha1},
-  {'sha2-256',      0x12, sha2, 256},
-  {'sha2-512',      0x13, sha2, 512},
-  {'sha3-512',      0x14, sha3, 512},
-  {'sha3-384',      0x15, sha3, 384},
-  {'sha3-256',      0x16, sha3, 256},
-  {'sha3-224',      0x17, sha3, 224},
-  {'sha3-224',      0x17, sha3, 224},
-  {"blake2b-8",   0xb201, blake2b, 8},
-  {"blake2b-16",  0xb202, blake2b, 16},
-  {"blake2b-24",  0xb203, blake2b, 24},
-  {"blake2b-32",  0xb204, blake2b, 32},
-  {"blake2b-40",  0xb205, blake2b, 40},
-  {"blake2b-48",  0xb206, blake2b, 48},
-  {"blake2b-56",  0xb207, blake2b, 56},
-  {"blake2b-64",  0xb208, blake2b, 64},
-  {"blake2b-72",  0xb209, blake2b, 72},
-  {"blake2b-80",  0xb20a, blake2b, 80},
-  {"blake2b-88",  0xb20b, blake2b, 88},
-  {"blake2b-96",  0xb20c, blake2b, 96},
+  {'sha2-256',      0x12, sha256},
+  {'sha2-512',      0x13, sha512},
+  {'sha3-512',      0x14, sha3,    512},
+  {'sha3-384',      0x15, sha3,    384},
+  {'sha3-256',      0x16, sha3,    256},
+  {'sha3-224',      0x17, sha3,    224},
+  {"blake2b-8",   0xb201, blake2b,   8},
+  {"blake2b-16",  0xb202, blake2b,  16},
+  {"blake2b-24",  0xb203, blake2b,  24},
+  {"blake2b-32",  0xb204, blake2b,  32},
+  {"blake2b-40",  0xb205, blake2b,  40},
+  {"blake2b-48",  0xb206, blake2b,  48},
+  {"blake2b-56",  0xb207, blake2b,  56},
+  {"blake2b-64",  0xb208, blake2b,  64},
+  {"blake2b-72",  0xb209, blake2b,  72},
+  {"blake2b-80",  0xb20a, blake2b,  80},
+  {"blake2b-88",  0xb20b, blake2b,  88},
+  {"blake2b-96",  0xb20c, blake2b,  96},
   {"blake2b-104", 0xb20d, blake2b, 104},
   {"blake2b-112", 0xb20e, blake2b, 112},
   {"blake2b-120", 0xb20f, blake2b, 120},
@@ -113,18 +116,18 @@ local table = {
   {"blake2b-496", 0xb23e, blake2b, 496},
   {"blake2b-504", 0xb23f, blake2b, 504},
   {"blake2b-512", 0xb240, blake2b, 512},
-  {"blake2s-8",   0xb241, blake2s, 8},
-  {"blake2s-16",  0xb242, blake2s, 16},
-  {"blake2s-24",  0xb243, blake2s, 24},
-  {"blake2s-32",  0xb244, blake2s, 32},
-  {"blake2s-40",  0xb245, blake2s, 40},
-  {"blake2s-48",  0xb246, blake2s, 48},
-  {"blake2s-56",  0xb247, blake2s, 56},
-  {"blake2s-64",  0xb248, blake2s, 64},
-  {"blake2s-72",  0xb249, blake2s, 72},
-  {"blake2s-80",  0xb24a, blake2s, 80},
-  {"blake2s-88",  0xb24b, blake2s, 88},
-  {"blake2s-96",  0xb24c, blake2s, 96},
+  {"blake2s-8",   0xb241, blake2s,   8},
+  {"blake2s-16",  0xb242, blake2s,  16},
+  {"blake2s-24",  0xb243, blake2s,  24},
+  {"blake2s-32",  0xb244, blake2s,  32},
+  {"blake2s-40",  0xb245, blake2s,  40},
+  {"blake2s-48",  0xb246, blake2s,  48},
+  {"blake2s-56",  0xb247, blake2s,  56},
+  {"blake2s-64",  0xb248, blake2s,  64},
+  {"blake2s-72",  0xb249, blake2s,  72},
+  {"blake2s-80",  0xb24a, blake2s,  80},
+  {"blake2s-88",  0xb24b, blake2s,  88},
+  {"blake2s-96",  0xb24c, blake2s,  96},
   {"blake2s-104", 0xb24d, blake2s, 104},
   {"blake2s-112", 0xb24e, blake2s, 112},
   {"blake2s-120", 0xb24f, blake2s, 120},
@@ -168,6 +171,5 @@ return function (nameOrCode, raw)
   end
   local code = codes[nameOrCode]
   local digest = hash(raw)
-  p("digest", digest)
-  return Varint.encode(code) .. Varint.encode(#digest).. digest, names[code]
+  return Varint.encode(code) .. Varint.encode(#digest) .. digest, names[code]
 end
