@@ -30,7 +30,6 @@ local k256 = ffi.new('uint32_t[64]', {
   0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
 })
 
-
 ffi.cdef [[
   struct state256 {
     uint32_t h[8];
@@ -69,7 +68,8 @@ end
 function Sha256:update(message)
   local length = #message
   self.length = self.length + length
-  local input = ffi.new("uint8_t[?]", length, message)
+  local input = ffi.new("uint8_t[?]", length)
+  ffi.copy(input, message, length)
   local offset = 0
   while offset < length do
     local needed = length - offset

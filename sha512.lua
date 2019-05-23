@@ -16,8 +16,8 @@ local initial384 = ffi.new('uint64_t[8]', {
 })
 
 local initial512 = ffi.new('uint64_t[8]', {
-  0xcbbb9d5dc1059ed8ULL, 0x629a292a367cd507ULL, 0x9159015a3070dd17ULL, 0x152fecd8f70e5939ULL,
-  0x67332667ffc00b31ULL, 0x8eb44a8768581511ULL, 0xdb0c2e0d64f98fa7ULL, 0x47b5481dbefa4fa4ULL,
+  0x6a09e667f3bcc908ULL, 0xbb67ae8584caa73bULL, 0x3c6ef372fe94f82bULL, 0xa54ff53a5f1d36f1ULL,
+  0x510e527fade682d1ULL, 0x9b05688c2b3e6c1fULL, 0x1f83d9abfb41bd6bULL, 0x5be0cd19137e2179ULL,
 })
 
 local k = ffi.new('uint64_t[80]', {
@@ -75,22 +75,20 @@ function Sha512:init384()
 end
 
 function Sha512:update(message)
-  p{message=message}
   local length = #message
   self.length = self.length + length
-  local input = ffi.new("uint8_t[?]", length, message)
+  local input = ffi.new("uint8_t[?]", length)
+  ffi.copy(input, message, length)
   local offset = 0
   while offset < length do
     local needed = length - offset
     local available = tonumber(128 - self.offset)
     local slice = math.min(needed, available)
-    -- p{needed=needed,available=available,length=length}
     for _ = 1, slice do
       local j = rshift(self.offset, 3)
       local mod = self.offset % 8
-      -- p{j=j,mod=mod}
       if mod == 0 then self.w[j] = 0 end
-      self.w[j] = bor(self.w[j], lshift(input[offset], (7 - mod) * 8))
+      self.w[j] = bor(self.w[j], lshift(1ULL * input[offset], (7 - mod) * 8))
       offset = offset + 1
       self.offset = self.offset + 1
     end
@@ -102,7 +100,7 @@ function Sha512:update(message)
 end
 
 function Sha512:compress()
-  p(ffi.string(self.w, 128))
+  -- p(ffi.string(self.w, 128))
   -- Extend the first 16 words into the remaining 48 words w[16..63] of the message schedule array:
   for i = 16, 79 do
     local s0 = bxor(ror(self.w[i - 15],  1), ror(self.w[i - 15], 8), rshift(self.w[i - 15],  7))
