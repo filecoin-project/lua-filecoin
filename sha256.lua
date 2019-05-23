@@ -41,6 +41,15 @@ ffi.cdef [[
   };
 ]]
 
+local function uint32(num)
+  return char(
+    rshift(num,  24),
+    band(rshift(num,  16), 0xff),
+    band(rshift(num,  8), 0xff),
+    band(num,  0xff)
+  )
+end
+
 local Sha256 = {}
 
 function Sha256:init()
@@ -137,16 +146,7 @@ function Sha256:pad()
   local K = tonumber((128 - 8 - 1 - self.offset) % 64)
   local high = tonumber(L / 0x100000000)
   local low = tonumber(L % 0x100000000)
-  self:update('\128' .. ('\000'):rep(K) .. char(
-    rshift(high, 24),
-    band(rshift(high, 16), 0xff),
-    band(rshift(high, 8), 0xff),
-    band(high, 0xff),
-    rshift(low, 24),
-    band(rshift(low, 16), 0xff),
-    band(rshift(low, 8), 0xff),
-    band(low, 0xff)
-  ))
+  self:update('\128' .. ('\000'):rep(K) .. uint32(high) .. uint32(low))
 end
 
 function Sha256:digest()
@@ -154,13 +154,7 @@ function Sha256:digest()
   assert(self.offset == 0)
   local parts = {}
   for i = 0, tonumber(self.digestLength) / 4 - 1 do
-    local h = self.h[i]
-    parts[i + 1] = char(
-      rshift(h, 24),
-      band(rshift(h, 16), 0xff),
-      band(rshift(h, 8), 0xff),
-      band(h, 0xff)
-    )
+    parts[i + 1] = uint32(self.h[i])
   end
   return concat(parts)
 end
