@@ -1,14 +1,11 @@
 local Varint = require './varint'
-local ffi = require 'ffi'
-local bit = require 'bit'
-local rshift = bit.rshift
-local hexDecode = require('base-16')('0123456789abcdef').decode
 
 local function identity()
   return function (message) return message end
 end
 
 local function sha1()
+  local hexDecode = require('base-16')('0123456789abcdef').decode
   local hash = require 'sha1'
   return function (message)
     return hexDecode(hash(message))
@@ -20,7 +17,7 @@ local function sha256()
 end
 
 local function sha512()
-  error("TODO: Implement sha512")
+  return require('sha512')[512]
 end
 
 local function sha3(size)
@@ -28,6 +25,8 @@ local function sha3(size)
 end
 
 local function blake2b(size)
+  local ffi = require 'ffi'
+  local rshift = require'bit'.rshift
   local hash = require 'blake2b'.hash
   local outlen = rshift(size, 3)
   return function (message)
@@ -36,6 +35,8 @@ local function blake2b(size)
 end
 
 local function blake2s(size)
+  local ffi = require 'ffi'
+  local rshift = require'bit'.rshift
   local hash = require 'blake2s'.hash
   local outlen = rshift(size, 3)
   return function (message)
