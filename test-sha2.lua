@@ -1,3 +1,4 @@
+local p = require 'pretty-print'.prettyPrint
 local sha256 = require('sha256')[256]
 local sha224 = require('sha256')[224]
 local hex = require('base-16')('0123456789abcdef')

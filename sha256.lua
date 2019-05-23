@@ -67,8 +67,8 @@ function Sha256:update(message)
     local available = tonumber(64 - self.offset)
     local slice = math.min(needed, available)
     for _ = 1, slice do
-      local j = rshift(tonumber(self.offset), 2)
-      local mod = tonumber(self.offset % 4)
+      local j = rshift(self.offset, 2)
+      local mod = self.offset % 4
       if mod == 0 then self.w[j] = 0 end
       self.w[j] = bor(self.w[j], lshift(input[offset], (3 - mod) * 8))
       offset = offset + 1
@@ -153,8 +153,8 @@ function Sha256:digest()
   self:pad()
   assert(self.offset == 0)
   local parts = {}
-  for i = 0, tonumber(self.digestLength / 4) - 1 do
-    local h = tonumber(self.h[i])
+  for i = 0, tonumber(self.digestLength) / 4 - 1 do
+    local h = self.h[i]
     parts[i + 1] = char(
       rshift(h, 24),
       band(rshift(h, 16), 0xff),
