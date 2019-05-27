@@ -90,6 +90,6 @@ for _, test in ipairs(tests) do
   assert(hash == test.hash, 'decoding hash mismatch')
   assert(name == test.name, 'decoding name mistmatch')
   assert(length == test.length, 'decoding length mismatch')
-  assert(Multihash.verify(test.input, multi), "Verification failed")
-  assert(not Multihash.verify(test.input .. 'x', multi), "Inverse verification failed")
+  assert(Multihash.verify(test.input, encoded), "Verification failed")
+  assert(not Multihash.verify(test.input .. 'x', encoded), "Inverse verification failed")
 end
