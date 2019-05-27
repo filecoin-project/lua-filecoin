@@ -52,6 +52,18 @@ local tests = {
     length = 20,
     multi = 'a0e402144556cf646984479710c85a8109001a89330c775e',
     hash = '4556cf646984479710c85a8109001a89330c775e' },
+  { input = '', name = 'blake2b-384',
+    length = 48,
+    multi = 'b0e40230b32811423377f52d7862286ee1a72ee540524380fda1724a6f25d7978c6fd3244a6caf0498812673c5e05ef583825100',
+    hash = 'b32811423377f52d7862286ee1a72ee540524380fda1724a6f25d7978c6fd3244a6caf0498812673c5e05ef583825100' },
+  { input = '', name = 'blake2b-224',
+    length = 28,
+    multi = '9ce4021c836cc68931c2e4e3e838602eca1902591d216837bafddfe6f0c8cb07',
+    hash = '836cc68931c2e4e3e838602eca1902591d216837bafddfe6f0c8cb07' },
+  { input = '', name = 'blake2b-160',
+    length = 20,
+    multi = '94e402143345524abf6bbe1809449224b5972c41790b6cf2',
+    hash = '3345524abf6bbe1809449224b5972c41790b6cf2' },
 }
 
 for _, test in ipairs(tests) do
