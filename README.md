@@ -19,7 +19,7 @@ local hash, name, length = Multihash.decode(multihash)
 assert(Multihash.verify('Hello World', multihash), 'Multihash mismatch')
 ```
 
-The actual implementations of the hash functions are hand-written in lua using luajit's bit and ffi libraries.  See [sha256.lua](sha256.lua), [sha512.lua](sha512.lua), [sha1.lua](sha1.lua), [blake2b.lua](blake2b.lua), and [blake2s.lua](blake2s.lua) for details.  The main module lazy requires these so only hashes actually used as runtime are ever loaded and compiled.
+The actual implementations of the hash functions are hand-written in lua using luajit's bit and ffi libraries.  See [sha256.lua](sha256.lua), [sha512.lua](sha512.lua), [sha1.lua](sha1.lua), [blake2b.lua](blake2b.lua), and [blake2s.lua](blake2s.lua) for details.  The main module lazy requires these so only hashes actually used at runtime are ever loaded and compiled.
 
 ## Multibase
 
@@ -39,4 +39,4 @@ local encoded = Multibase.encode('Hello World', 'hex')
 local original = Multibase.decode(encoded)
 ```
 
-The actual implementations of the base functions are hand-written in lua using luajit's bit and ffi libraries.  See [base-2.lua](base-2.lua), [base-8.lua](base-8.lua), [base-16.lua](base-16.lua), [base-32.lua](base-32.lua), [base-64.lua](base-64.lua), and [base-x.lua](base-x.lua) for details.  The main module lazy requires these so only bases actually used as runtime are ever loaded and compiled.
+The actual implementations of the base functions are hand-written in lua using luajit's bit and ffi libraries.  See [base-2.lua](base-2.lua), [base-8.lua](base-8.lua), [base-16.lua](base-16.lua), [base-32.lua](base-32.lua), [base-64.lua](base-64.lua), and [base-x.lua](base-x.lua) for details.  The main module lazy requires these so only bases actually used at runtime are ever loaded and compiled.
