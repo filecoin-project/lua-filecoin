@@ -1,39 +1,22 @@
-## Building
+## Multihash
 
-This project is built using [lit](https://github.com/luvit/lit) which can be installed at the [luvit.io](http://luvit.io/install.html) website.
+There is a basic implementation of multihash here as seen in [multihash.lua](multihash.lua) and [test-multihash.lua](test-multihash.lua).
 
-Basically lit (Luvit Inventors Toolkit) will collect dependencies defined in package.json as well as source files in this repo and bundle them into a single zipfile.  It will then prepend this with a shebang line with the path to luvi (currently hard-coded in package.lua) to form a single-file executible. Also the luvi binary itself can be prepended instead of a shebang line pointing to it (this is actually default behavior.)
+Currently this supports the following multihash types: `identity`, `sha`, `sha2-256`, `sha2-512`, `blake2b-*` (8-512), and `blake2s-*` (8-256).
 
-So assuming you're on a unix system and your user can write to `/usr/local/bin`, the following will install `lit` and `luvi` as well as build `lua-filecoin`.
+Usage sample:
 
-```sh
-cd /usr/local/bin
-# Download lit.zip and luvi from github releases and bootstrap lit.
-curl -L https://github.com/luvit/lit/raw/master/get-lit.sh | sh
-# Download lua-filecoin from github and build.
-lit make https://github.com/filecoin-project/lua-filecoin/archive/master.zip
+```lua
+local Multihash = require 'multihash'
+
+-- Multihash.encode(input, hash-name, [length-override]) -> multihash, hash-name, actual-length
+local multihash = Multihash.encode('Hello World', 'blake2b-256')
+
+-- Multihash.decode(multihash) -> hash, hash-name, actual-length
+local hash, name, length = Multihash.decode(multihash)
 ```
 
-You should now have `lua-filecoin` in your path if all went well!
+The actual implementations of the hash functions are hand-written in lua using luajit's bit and ffi libraries.  See [sha256.lua](sha256.lua), [sha512.lua](sha512.lua), [sha1.lua](sha1.lua), [blake2b.lua](blake2b.lua), and [blake2s.lua](blake2s.lua) for details.  The main module lazy requires these so only hashes actually used as runtime are ever loaded and compiled.
 
-It is a self executing zip file.
+## Multibase
 
-```sh
-tim@t580:~$ ls -lh $(which lua-filecoin)
--rwxr-xr-x 1 tim tim 8.2K Mar  5 20:35 /usr/local/bin/lua-filecoin
-tim@t580:~$ lua-filecoin
-Hello Filecoin
-tim@t580:~$ unzip -l $(which lua-filecoin)
-Archive:  /usr/local/bin/lua-filecoin
-warning [/usr/local/bin/lua-filecoin]:  25 extra bytes at beginning or within zipfile
-  (attempting to process anyway)
-  Length      Date    Time    Name
----------  ---------- -----   ----
-        0  1980-00-00 00:00   deps/
-     6680  1980-00-00 00:00   deps/pretty-print.lua
-     7231  1980-00-00 00:00   deps/require.lua
-       24  1980-00-00 00:00   main.lua
-      462  1980-00-00 00:00   package.lua
----------                     -------
-    14397                     5 files
-```
