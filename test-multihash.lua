@@ -64,6 +64,14 @@ local tests = {
     length = 20,
     multi = '94e402143345524abf6bbe1809449224b5972c41790b6cf2',
     hash = '3345524abf6bbe1809449224b5972c41790b6cf2' },
+  { input = '', name = 'blake2s-160',
+    length = 20,
+    multi = 'd4e40214354c9c33f735962418bdacb9479873429c34916f',
+    hash = '354c9c33f735962418bdacb9479873429c34916f' },
+  { input = '', name = 'blake2s-224',
+    length = 28,
+    multi = 'dce4021c1fa1291e65248b37b3433475b2a0dd63d54a11ecc4e3e034e7bc1ef4',
+    hash = '1fa1291e65248b37b3433475b2a0dd63d54a11ecc4e3e034e7bc1ef4' },
 }
 
 for _, test in ipairs(tests) do
