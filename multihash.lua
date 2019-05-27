@@ -180,10 +180,19 @@ local function decode(multi, index)
   length, index = Varint.decode(multi, index)
   local last = index + length - 1
   assert(#multi >= last)
-  return multi:sub(index, last), names[code], length
+  return multi:sub(index, last), names[code], length, index
+end
+
+local function verify(raw, multi, index)
+  index = index or 1
+  local code, length
+  code, index = Varint.decode(multi, index)
+  length, index = Varint.decode(multi, index)
+  return multi == encode(raw, code, length), index
 end
 
 return {
   encode = encode,
   decode = decode,
+  verify = verify,
 }
