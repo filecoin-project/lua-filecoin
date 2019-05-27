@@ -20,10 +20,6 @@ local function sha512()
   return require('sha512')[512]
 end
 
-local function sha3(size)
-  error("TODO: Implement sha3-" .. size)
-end
-
 local function blake2b(size)
   local ffi = require 'ffi'
   local rshift = require'bit'.rshift
@@ -49,10 +45,6 @@ local table = {
   {'sha1',          0x11, sha1},
   {'sha2-256',      0x12, sha256},
   {'sha2-512',      0x13, sha512},
-  {'sha3-512',      0x14, sha3,    512},
-  {'sha3-384',      0x15, sha3,    384},
-  {'sha3-256',      0x16, sha3,    256},
-  {'sha3-224',      0x17, sha3,    224},
   {"blake2b-8",   0xb201, blake2b,   8},
   {"blake2b-16",  0xb202, blake2b,  16},
   {"blake2b-24",  0xb203, blake2b,  24},
@@ -164,7 +156,7 @@ for i = 1, #table do
   names[code] = name
 end
 
-return function (nameOrCode, raw)
+local function encode(raw, nameOrCode, length)
   local hash = assert(hashes[nameOrCode], "Unknown name or code")
   if type(hash) == 'table' then
     hash = hash[1](hash[2])
@@ -172,5 +164,26 @@ return function (nameOrCode, raw)
   end
   local code = codes[nameOrCode]
   local digest = hash(raw)
-  return Varint.encode(code) .. Varint.encode(#digest) .. digest, names[code]
+  local len = #digest
+  if not length then length = len end
+  assert(length <= len, "Specified length longer than natural digest length")
+  if length < len then
+    digest = digest:sub(1, length)
+  end
+  return Varint.encode(code) .. Varint.encode(length) .. digest, names[code], length
 end
+
+local function decode(multi, index)
+  index = index or 1
+  local code, length
+  code, index = Varint.decode(multi, index)
+  length, index = Varint.decode(multi, index)
+  local last = index + length - 1
+  assert(#multi >= last)
+  return multi:sub(index, last), names[code], length
+end
+
+return {
+  encode = encode,
+  decode = decode,
+}
