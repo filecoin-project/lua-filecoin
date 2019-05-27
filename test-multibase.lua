@@ -1,5 +1,5 @@
 local p = require'pretty-print'.prettyPrint
-local multibase = require 'multibase'
+local Multibase = require 'multibase'
 
 local messages = {
   "Decentralize everything!!",
@@ -137,7 +137,7 @@ for _, list in ipairs(messages) do
       collectgarbage()
       print("Encoding " .. code)
       collectgarbage()
-      local encoded, name = multibase.encode(code, message)
+      local encoded, name = Multibase.encode(message, code)
       collectgarbage()
       p(name, encoded)
       collectgarbage()
@@ -148,7 +148,7 @@ for _, list in ipairs(messages) do
       end
       collectgarbage()
       print("Decoding " .. code)
-      local decoded, name2 = multibase.decode(encoded)
+      local decoded, name2 = Multibase.decode(encoded)
       p(name2, decoded)
       collectgarbage()
       if decoded ~= message then

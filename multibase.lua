@@ -44,7 +44,7 @@ for i = 1, #table do
   names[code] = name
 end
 
-local function encode(nameOrCode, raw)
+local function encode(raw, nameOrCode)
   local base = assert(bases[nameOrCode], "Unknown name or code")
   if type(base[1]) == 'string' then
     base[1] = require(base[1])

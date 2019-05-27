@@ -12,7 +12,7 @@ local Multihash = require 'multihash'
 -- Multihash.encode(input, hash-name, [length-override]) -> multihash, hash-name, actual-length
 local multihash = Multihash.encode('Hello World', 'blake2b-256')
 
--- Multihash.decode(multihash) -> hash, hash-name, actual-length
+-- Multihash.decode(multihash, [index]) -> hash, hash-name, actual-length, index
 local hash, name, length = Multihash.decode(multihash)
 
 -- Multihash.verify(input, multihash, [index]) -> verified, index
@@ -23,3 +23,20 @@ The actual implementations of the hash functions are hand-written in lua using l
 
 ## Multibase
 
+There is a basic implementation of multibase here as seen in [multibase.lua](multibase.lua) and [test-multibase.lua](test-multibase.lua).
+
+Currently this supports the following multibase encodings: `identity`, `base2`, `base8`, `base10`, `base16`, `base16upper`, `base32`, `base32upper`, `base32pad`, `base32padupper`, `base32hex`, `base32hexupper`, `base32hexpad`, `base32hexpadupper`, `base32z`, `base58flickr`, `base58btc`, `base64`, `base64pad`, `base64url`, and `base64urlpad`.
+
+Usage sample:
+
+```lua
+local Multibase = require 'multibase'
+
+-- Multibase.encode(raw, name-or-code) -> encoded, name
+local encoded = Multibase.encode('Hello World', 'hex')
+
+-- Multibase.decode(encoded) -> raw, name
+local original = Multibase.decode(encoded)
+```
+
+The actual implementations of the base functions are hand-written in lua using luajit's bit and ffi libraries.  See [base-2.lua](base-2.lua), [base-8.lua](base-8.lua), [base-16.lua](base-16.lua), [base-32.lua](base-32.lua), [base-64.lua](base-64.lua), and [base-x.lua](base-x.lua) for details.  The main module lazy requires these so only bases actually used as runtime are ever loaded and compiled.
