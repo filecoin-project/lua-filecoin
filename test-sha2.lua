@@ -3,7 +3,7 @@ local sha256 = require('sha256')[256]
 local sha224 = require('sha256')[224]
 local sha384 = require('sha512')[384]
 local sha512 = require('sha512')[512]
-local hex = require('base-16')('0123456789abcdef')
+local hex = require 'hex'
 
 -- local h = sha256()
 -- h:init()

@@ -1,0 +1,1 @@
+return require('base-16')('0123456789abcdef')

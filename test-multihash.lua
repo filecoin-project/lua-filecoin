@@ -1,7 +1,7 @@
 local rep = string.rep
 local p = require 'pretty-print'.prettyPrint
 local Multihash = require "multihash"
-local hex = require('base-16')('0123456789abcdef')
+local hex = require 'hex'
 
 local tests = {
   { input = '', name = 'sha1',

@@ -5,7 +5,7 @@ local function identity()
 end
 
 local function sha1()
-  local hexDecode = require('base-16')('0123456789abcdef').decode
+  local hexDecode = require('hex').decode
   local hash = require 'sha1'
   return function (message)
     return hexDecode(hash(message))
