@@ -61,7 +61,7 @@ for _, test in ipairs(tests) do
   print()
   p(test)
   local encoded, decoded, name, multi, hash
-  encoded, name = Multihash.encode(test.input, test.name, test.givenLength)
+  encoded, name = Multihash.hash(test.input, test.name, test.givenLength)
   multi = hex.encode(encoded)
   p(multi)
   assert(multi == test.multi, 'multihash encoding failure')

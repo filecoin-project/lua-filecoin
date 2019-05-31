@@ -36,9 +36,7 @@ local function registerTag(num, meta)
 end
 
 local defaultTag = {
-  __tostring = function (self)
-    return string.format("%d(%s)", self.tag, self[1])
-  end,
+  tag = 'CBOR-TAG',
   encode = function (obj)
     return obj[1]
   end,
@@ -53,7 +51,9 @@ end
 
 local encoders = {}
 local function encode(obj)
-  local tag = tags[getmetatable(obj)]
+  local meta = getmetatable(obj)
+  if meta == defaultTag then return encoders.tag(obj.tag, obj) end
+  local tag = tags[meta]
   if tag then return encoders.tag(tag, obj) end
   return encoders[type(obj)](obj)
 end

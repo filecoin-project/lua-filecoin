@@ -39,32 +39,39 @@ local function decodeV1(cid, index)
   }, index
 end
 
-local function decode(cid)
-  return (decodeV0(cid) or decodeV1(cid))
-end
-
-local function encode(hash, multicodec, multibase)
+local function encode(obj)
+  local multicodec = obj.multicodec
   if type(multicodec) == 'string' then multicodec = codecs[multicodec] end
   assert(type(multicodec) == 'number', 'Unknown multicodec');
   return Multibase.encode(table.concat{
     Varint.encode(1),
     Varint.encode(multicodec),
-    hash
-  }, multibase)
+    obj.prehash or Multihash.encode(obj.hash, obj.multihash)
+  }, obj.multibase)
+end
+
+local function decode(cid)
+  return (decodeV0(cid) or decodeV1(cid))
 end
 
 local function link(data, multihash, multicodec, multibase)
-  return encode(Multihash.encode(data, multihash or 'sha2-256'), multicodec or 'raw', multibase or 'base58btc')
+  return encode {
+    prehash = Multihash.hash(data, multihash or 'sha2-256'),
+    multicodec = multicodec or 'raw',
+    multibase = multibase or 'base58btc'
+  }
 end
 
 local function link0(data)
-  return Multibase.getBase('base58btc').encode(Multihash.encode(data, 'sha2-256'))
+  return Multibase.getBase('base58btc').encode(Multihash.hash(data, 'sha2-256'))
 end
+
 
 return {
   decode = decode,
   decodeV0 = decodeV0,
   decodeV1 = decodeV1,
+  encode = encode,
   link = link,
   link0 = link0,
 }

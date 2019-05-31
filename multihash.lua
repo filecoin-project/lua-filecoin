@@ -165,17 +165,22 @@ local function getHash(nameOrCode)
   return hash
 end
 
-local function encode(raw, nameOrCode, length)
-  local hash = getHash(nameOrCode)
-  local code = codes[nameOrCode]
-  local digest = hash(raw)
+local function encode(digest, nameOrCode)
+  local length = #digest
+  local code = assert(codes[nameOrCode], "Unknown name or code")
+  return Varint.encode(code) .. Varint.encode(length) .. digest, names[code]
+end
+
+local function hash(raw, nameOrCode, length)
+  local hashfn = getHash(nameOrCode)
+  local digest = hashfn(raw)
   local len = #digest
   if not length then length = len end
   assert(length <= len, "Specified length longer than natural digest length")
   if length < len then
     digest = digest:sub(1, length)
   end
-  return Varint.encode(code) .. Varint.encode(length) .. digest, names[code]
+  return encode(digest, nameOrCode)
 end
 
 local function decode(multi, index)
@@ -193,12 +198,13 @@ local function verify(raw, multi, index)
   local code, length
   code, index = Varint.decode(multi, index)
   length, index = Varint.decode(multi, index)
-  return multi == encode(raw, code, length), index
+  return multi == hash(raw, code, length), index
 end
 
 return {
   getHash = getHash,
   encode = encode,
   decode = decode,
+  hash = hash,
   verify = verify,
 }

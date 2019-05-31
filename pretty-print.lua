@@ -1,5 +1,6 @@
 local getenv = require('os').getenv
 local isUtf8 = require 'isutf8'
+local ffi = require 'ffi'
 
 local prettyPrint, dump, strip, color, colorize, loadColors
 local theme = {}
@@ -139,6 +140,9 @@ local function stringEscape(c)
   return controls[string.byte(c, 1)]
 end
 
+local utils = {}
+local tempignores = {}
+
 function dump(value, recurse, nocolor)
   local seen = {}
   local output = {}
@@ -215,6 +219,10 @@ function dump(value, recurse, nocolor)
       end
     elseif typ == 'table' and not seen[localValue] then
       if not recurse then seen[localValue] = true end
+      local meta = getmetatable(localValue)
+      if meta and meta.tag then
+        write(colorize('highlight', meta.tag))
+      end
       write(obrace)
       local i = 1
       -- Count the number of keys so we know when to stop adding commas
@@ -256,6 +264,8 @@ function dump(value, recurse, nocolor)
         unindent()
       end
       write(cbrace)
+    elseif typ == 'cdata' then
+      write(colorize(typ, tostring(localValue) .. ':' .. ffi.sizeof(localValue)))
     else
       write(colorize(typ, tostring(localValue)))
     end
@@ -265,6 +275,9 @@ function dump(value, recurse, nocolor)
   local s = table.concat(output)
   return nocolor and strip(s) or s
 end
+
+utils.colorize = colorize
+utils.dump = dump
 
 function prettyPrint(...)
   local n = select('#', ...)
