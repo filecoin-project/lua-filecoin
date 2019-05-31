@@ -32,6 +32,10 @@ local function bin(str)
   return val
 end
 
+local function str(val)
+  return ffi.string(val, ffi.sizeof(val))
+end
+
 local tags = {}
 local function registerTag(num, meta)
   tags[num] = meta
@@ -58,6 +62,7 @@ local function encode(obj)
   if meta == defaultTag then return encoders.tag(obj.tag, obj) end
   local tag = tags[meta]
   if tag then return encoders.tag(tag, obj) end
+  if meta and meta.encode then obj = meta.encode(obj) end
   return encoders[type(obj)](obj)
 end
 
@@ -300,6 +305,7 @@ return {
   u64 = u64,
   buf = buf,
   bin = bin,
+  str = str,
   registerTag = registerTag,
   makeTag = makeTag,
   encode = encode,

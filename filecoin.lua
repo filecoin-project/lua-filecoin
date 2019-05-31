@@ -1,6 +1,7 @@
 local Varint = require 'varint'
 local Cbor = require 'cbor'
 local bin = Cbor.bin
+local str = Cbor.str
 require 'cid-cbor'
 
 --------------------------------------------------------------------------------
@@ -10,8 +11,8 @@ require 'cid-cbor'
 local Address = {}
 local AddressMeta = {__index = Address}
 
-function Address.new()
-  return setmetatable({}, AddressMeta)
+function Address.new(val)
+  return setmetatable(val and AddressMeta.decode(val) or {}, AddressMeta)
 end
 
 AddressMeta.tag = "Address"
@@ -21,19 +22,27 @@ function AddressMeta:__tostring()
 end
 
 function AddressMeta:encode()
-  local network = self.network
+  local protocol = self.protocol
   local payload = self.payload
-  if network == 0 then
+  if protocol == 0 then
     assert(type(payload) == 'number' and math.floor(payload) == payload, 'Invalid ID payload in address')
-    return bin(network .. Varint.encode(payload))
+    return bin(protocol .. Varint.encode(payload))
   else
-    error 'TODO: support more address networks'
+    error 'TODO: support more address protocols'
   end
-  error 'Invalid network value in address'
+  error 'Invalid protocol value in address'
 end
 
 function AddressMeta.decode(val)
-  error"TODO:AddressMeta.decode"
+  local protocol = val[0] - 48
+  if protocol == 0 then
+    return {
+      protocol = protocol,
+      payload = Varint.decodebin(val, 1)
+    }
+  else
+    error "TODO: decode more protocol versions"
+  end
 end
 
 --------------------------------------------------------------------------------

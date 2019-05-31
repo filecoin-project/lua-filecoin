@@ -24,6 +24,21 @@ function Varint.decode(chunk, index)
   return length, index
 end
 
+function Varint.decodebin(chunk, offset)
+  local length = 0
+  local bits = 0
+  while true do
+    local b = chunk[offset]
+    offset = offset + 1
+    length = bor(length, lshift(band(b, 0x7f), bits))
+    if b < 0x80 then
+      break
+    end
+    bits = bits + 7
+  end
+  return length, offset
+end
+
 function Varint.encode(num)
   local parts = {}
   while num >= 0x80 do
