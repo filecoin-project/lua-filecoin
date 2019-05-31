@@ -9,11 +9,11 @@ Usage sample:
 ```lua
 local Multihash = require 'multihash'
 
--- Multihash.encode(input, hash-name, [length-override]) -> multihash, hash-name, actual-length
+-- Multihash.encode(input, hash-name, [length-override]) -> multihash, hash-name
 local multihash = Multihash.encode('Hello World', 'blake2b-256')
 
--- Multihash.decode(multihash, [index]) -> hash, hash-name, actual-length, index
-local hash, name, length = Multihash.decode(multihash)
+-- Multihash.decode(multihash, [index]) -> hash, hash-name, index
+local hash, name = Multihash.decode(multihash)
 
 -- Multihash.verify(input, multihash, [index]) -> verified, index
 assert(Multihash.verify('Hello World', multihash), 'Multihash mismatch')

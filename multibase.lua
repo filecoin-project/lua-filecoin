@@ -8,7 +8,7 @@ local function identity()
 end
 
 local table = {
-  {'identity',         '\0', identity, ''},
+  {'identity',         '\0', identity},
   {'base2',             '0', "base-2",  '01'},
   {'base8',             '7', "base-8",  '01234567'},
   {'base10',            '9', "base-x",  '0123456789'},
@@ -44,7 +44,7 @@ for i = 1, #table do
   names[code] = name
 end
 
-local function encode(raw, nameOrCode)
+local function getBase(nameOrCode)
   local base = assert(bases[nameOrCode], "Unknown name or code")
   if type(base[1]) == 'string' then
     base[1] = require(base[1])
@@ -53,17 +53,23 @@ local function encode(raw, nameOrCode)
     base = base[1](base[2])
     bases[nameOrCode] = base
   end
+  return base
+end
+
+local function encode(raw, nameOrCode)
+  local base = getBase(nameOrCode)
   local code = codes[nameOrCode]
   return code .. base.encode(raw), names[code]
 end
 
 local function decode(encoded)
   local code = encoded:sub(1, 1)
-  local base = assert(bases[code], "Unknown code in prefix")
+  local base = getBase(code)
   return base.decode(encoded:sub(2)), names[code]
 end
 
 return {
+  getBase = getBase,
   encode = encode,
   decode = decode
 }

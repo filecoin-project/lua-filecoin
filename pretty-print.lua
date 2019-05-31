@@ -1,4 +1,5 @@
 local getenv = require('os').getenv
+local isUtf8 = require 'isutf8'
 
 local prettyPrint, dump, strip, color, colorize, loadColors
 local theme = {}
@@ -7,7 +8,7 @@ local defaultTheme
 
 local width
 
-local quote, quote2, dquote, dquote2, obracket, cbracket, obrace, cbrace, comma, equals, controls
+local quote, quote2, dquote, dquote2, bquote, bquote2, obracket, cbracket, obrace, cbrace, comma, equals, controls
 
 local themes = {
   -- nice color theme using 16 ansi colors
@@ -98,6 +99,8 @@ function loadColors(index)
   quote2   = colorize('quotes', "'")
   dquote   = colorize('quotes', '"', 'string')
   dquote2  = colorize('quotes', '"')
+  bquote   = colorize('quotes', '<', 'string')
+  bquote2  = colorize('quotes', '>')
   obrace   = colorize('braces', '{ ')
   cbrace   = colorize('braces', '}')
   obracket = colorize('property', '[')
@@ -109,11 +112,7 @@ function loadColors(index)
   for i = 0, 31 do
     local c = special[i]
     if not c then
-      if i < 10 then
-        c = "00" .. tostring(i)
-      else
-        c = "0" .. tostring(i)
-      end
+      c = string.format("x%02x", i)
     end
     controls[i] = colorize('escape', '\\' .. c, 'string')
   end
@@ -121,15 +120,9 @@ function loadColors(index)
   controls[34] = colorize('escape', '\\"', 'string')
   controls[39] = colorize('escape', "\\'", 'string')
   for i = 128, 255 do
-    local c
-    if i < 100 then
-      c = "0" .. tostring(i)
-    else
-      c = tostring(i)
-    end
+    local c = string.format("x%02x", i)
     controls[i] = colorize('escape', '\\' .. c, 'string')
   end
-
 end
 
 function color(colorName)
@@ -203,14 +196,22 @@ function dump(value, recurse, nocolor)
   local function process(localValue)
     local typ = type(localValue)
     if typ == 'string' then
-      if string.find(localValue, "'") and not string.find(localValue, '"') then
-        write(dquote)
-        write(string.gsub(localValue, '[%c\\\128-\255]', stringEscape))
-        write(dquote2)
+      if isUtf8(localValue) then
+        if string.find(localValue, "'") and not string.find(localValue, '"') then
+          write(dquote)
+          write(string.gsub(localValue, '[%c\\\128-\255]', stringEscape))
+          write(dquote2)
+        else
+          write(quote)
+          write(string.gsub(localValue, "[%c\\'\128-\255]", stringEscape))
+          write(quote2)
+        end
       else
-        write(quote)
-        write(string.gsub(localValue, "[%c\\'\128-\255]", stringEscape))
-        write(quote2)
+        write(bquote)
+        write(localValue:gsub('.', function (c)
+          return string.format("%02x", c:byte(1))
+        end))
+        write(bquote2)
       end
     elseif typ == 'table' and not seen[localValue] then
       if not recurse then seen[localValue] = true end

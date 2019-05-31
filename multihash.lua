@@ -156,12 +156,17 @@ for i = 1, #table do
   names[code] = name
 end
 
-local function encode(raw, nameOrCode, length)
+local function getHash(nameOrCode)
   local hash = assert(hashes[nameOrCode], "Unknown name or code")
   if type(hash) == 'table' then
     hash = hash[1](hash[2])
     hashes[nameOrCode] = hash
   end
+  return hash
+end
+
+local function encode(raw, nameOrCode, length)
+  local hash = getHash(nameOrCode)
   local code = codes[nameOrCode]
   local digest = hash(raw)
   local len = #digest
@@ -170,7 +175,7 @@ local function encode(raw, nameOrCode, length)
   if length < len then
     digest = digest:sub(1, length)
   end
-  return Varint.encode(code) .. Varint.encode(length) .. digest, names[code], length
+  return Varint.encode(code) .. Varint.encode(length) .. digest, names[code]
 end
 
 local function decode(multi, index)
@@ -180,7 +185,7 @@ local function decode(multi, index)
   length, index = Varint.decode(multi, index)
   local last = index + length - 1
   assert(#multi >= last)
-  return multi:sub(index, last), names[code], length, index
+  return multi:sub(index, last), names[code], index
 end
 
 local function verify(raw, multi, index)
@@ -192,6 +197,7 @@ local function verify(raw, multi, index)
 end
 
 return {
+  getHash = getHash,
   encode = encode,
   decode = decode,
   verify = verify,
