@@ -1,5 +1,40 @@
-local cbor = require 'cbor'
+local Varint = require 'varint'
+local Cbor = require 'cbor'
+local bin = Cbor.bin
 require 'cid-cbor'
+
+--------------------------------------------------------------------------------
+-- Address
+--------------------------------------------------------------------------------
+
+local Address = {}
+local AddressMeta = {__index = Address}
+
+function Address.new()
+  return setmetatable({}, AddressMeta)
+end
+
+AddressMeta.tag = "Address"
+
+function AddressMeta:__tostring()
+  return self.network .. self.protocol .. tonumber(self.payload)
+end
+
+function AddressMeta:encode()
+  local network = self.network
+  local payload = self.payload
+  if network == 0 then
+    assert(type(payload) == 'number' and math.floor(payload) == payload, 'Invalid ID payload in address')
+    return bin(network .. Varint.encode(payload))
+  else
+    error 'TODO: support more address networks'
+  end
+  error 'Invalid network value in address'
+end
+
+function AddressMeta.decode(val)
+  error"TODO:AddressMeta.decode"
+end
 
 --------------------------------------------------------------------------------
 -- Block
@@ -48,7 +83,7 @@ function BlockMeta.decode(val)
   }
 end
 
-cbor.registerTag(43, BlockMeta)
+Cbor.registerTag(43, BlockMeta)
 
 --------------------------------------------------------------------------------
 -- Message
@@ -89,7 +124,7 @@ function MessageMeta.decode(val)
   }
 end
 
-cbor.registerTag(44, MessageMeta)
+Cbor.registerTag(44, MessageMeta)
 
 --------------------------------------------------------------------------------
 -- SignedMessage
@@ -118,13 +153,14 @@ function SignedMessageMeta.decode(val)
   }
 end
 
-cbor.registerTag(45, SignedMessageMeta)
+Cbor.registerTag(45, SignedMessageMeta)
 
 --------------------------------------------------------------------------------
 -- Exports
 --------------------------------------------------------------------------------
 
 return {
+  Address = Address,
   Block = Block,
   Message = Message,
   SignedMessage = SignedMessage

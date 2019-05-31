@@ -26,7 +26,10 @@ local u64 = typeof 'uint64_t'
 local buf = typeof 'uint8_t[?]'
 
 local function bin(str)
-  return buf(#str, str)
+  local len = #str
+  local val = buf(len)
+  ffi.copy(val, str, len)
+  return val
 end
 
 local tags = {}
