@@ -4,6 +4,8 @@ local codecs = require 'multicodec'
 local Varint = require 'varint'
 local sub = string.sub
 
+local CidMeta = { tag = "CID" }
+
 -- For v0 CIDs, we assume base58btc encoding.
 local function decodeV0(cid)
   if #cid ~= 46 or sub(cid, 1, 2) ~= 'Qm' then
@@ -85,28 +87,29 @@ end
 local function link(data, options)
   options = options or {}
   local multihash = options.multihash or "blake2b-256"
-  return {
+  return setmetatable({
     version = 1,
     multicodec = options.multicodec or 'raw',
     multibase = options.multibase or 'base58btc',
     multihash = multihash,
     hash = Multihash.getHash(multihash)(data)
-  }
+  }, CidMeta)
 end
 
 local function link0(data)
   local multihash = 'sha2-256'
-  return {
+  return setmetatable({
     version = 0,
     multibase = 'base58btc',
     multicodec = 'dag-pb',
     multihash = multihash,
     hash = Multihash.getHash(multihash)(data)
-  }
+  }, CidMeta)
 end
 
 
 return {
+  meta = CidMeta,
   decode = decode,
   decodeV0 = decodeV0,
   decodeV1 = decodeV1,
