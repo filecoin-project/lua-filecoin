@@ -52,7 +52,7 @@ local tests = {
     'ac65c58b6aff10a2ca34c37735008d671037fa4081bf56b4ee243729fa5e768e'}
 }
 for i = 1, #tests do
-  local message, expected224, expected256, expected384, expected512  = table.unpack(tests[i])
+  local message, expected224, expected256, expected384, expected512  = unpack(tests[i])
   collectgarbage()
   collectgarbage()
   print()

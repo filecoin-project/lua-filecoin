@@ -1,6 +1,6 @@
 local char = string.char
 local byte = string.byte
-local unpack = table.unpack
+local unpack = table.unpack or unpack
 local bit = require 'bit'
 local bor = bit.bor
 local band = bit.band

@@ -189,6 +189,7 @@ function Blake2b.new(outlen, key)
 end
 
 function Blake2b:update(input)
+  assert(input, "Missing input")
   if type(input) == 'string' then
     local str = input
     local len = #str
