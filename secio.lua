@@ -264,7 +264,7 @@ local function makeDecrypt(cipherType, iv, key)
   if cipherType == 'AES-128' then
     assert(1 == C.EVP_DecryptInit_ex(ctx, C.EVP_aes_128_ctr(), nil, key, iv))
   elseif cipherType == 'AES-256' then
-    assert(1 == C.EVP_EncryptInit_ex(ctx, C.EVP_aes_256_ctr(), nil, key, iv))
+    assert(1 == C.EVP_DecryptInit_ex(ctx, C.EVP_aes_256_ctr(), nil, key, iv))
   else
     error('Unsupported decryption ciphertype: ' .. cipherType)
   end
